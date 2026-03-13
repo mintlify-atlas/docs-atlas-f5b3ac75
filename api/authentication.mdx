@@ -1,0 +1,407 @@
+---
+title: Authentication
+description: Security and authentication considerations for the Hotel Reservation System API
+---
+
+## Current Authentication Status
+
+<Warning>
+  The current implementation does not include authentication or authorization. The API is open and accepts requests from any origin.
+</Warning>
+
+The Hotel Reservation System API, as implemented in the source code, does not currently enforce authentication. This means:
+
+- All endpoints are publicly accessible
+- No API keys or tokens are required
+- CORS is enabled for all origins
+- No user session management
+
+## Security Considerations
+
+### CORS Configuration
+
+The API currently uses a permissive CORS configuration (`server.js:18`):
+
+```javascript server.js
+const cors = require("cors");
+app.use(cors());
+```
+
+This allows requests from **any origin**, which is suitable for development but **not recommended for production**.
+
+<Tip>
+  For development environments where the frontend runs on a different port (e.g., `http://localhost:3000`), this permissive CORS setup simplifies local testing.
+</Tip>
+
+### Database Security
+
+Database credentials are hardcoded in `model/database.js:5-10`:
+
+```javascript database.js
+const conexion = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '1234',
+    database: 'BDReservacion'
+});
+```
+
+<Warning>
+  Hardcoded credentials pose a security risk. Never commit real passwords to version control.
+</Warning>
+
+## Recommended Authentication Implementation
+
+For production deployments, consider implementing one of these authentication strategies:
+
+### 1. JWT (JSON Web Tokens)
+
+JWT is a popular choice for REST APIs. Here's how to implement it:
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    npm install jsonwebtoken bcryptjs
+    ```
+  </Step>
+  
+  <Step title="Create authentication middleware">
+    ```javascript middleware/auth.js
+    const jwt = require('jsonwebtoken');
+    
+    const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
+    
+    function authenticateToken(req, res, next) {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+      
+      if (!token) {
+        return res.status(401).json({ message: 'Token requerido' });
+      }
+      
+      jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) {
+          return res.status(403).json({ message: 'Token inválido' });
+        }
+        req.user = user;
+        next();
+      });
+    }
+    
+    module.exports = { authenticateToken };
+    ```
+  </Step>
+  
+  <Step title="Create login endpoint">
+    ```javascript router/auth.Router.js
+    const express = require('express');
+    const jwt = require('jsonwebtoken');
+    const bcrypt = require('bcryptjs');
+    const conexion = require('../model/database');
+    
+    const router = express.Router();
+    const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
+    
+    router.post('/login', (req, res) => {
+      const { username, password } = req.body;
+      
+      const SQL = "SELECT * FROM `usuarios` WHERE username=?";
+      conexion.query(SQL, [username], async (err, results) => {
+        if (err) throw err;
+        
+        if (results.length === 0) {
+          return res.status(401).json({ message: 'Credenciales inválidas' });
+        }
+        
+        const user = results[0];
+        const validPassword = await bcrypt.compare(password, user.password);
+        
+        if (!validPassword) {
+          return res.status(401).json({ message: 'Credenciales inválidas' });
+        }
+        
+        const token = jwt.sign(
+          { id: user.id, username: user.username },
+          SECRET_KEY,
+          { expiresIn: '24h' }
+        );
+        
+        res.json({ token, username: user.username });
+      });
+    });
+    
+    module.exports = router;
+    ```
+  </Step>
+  
+  <Step title="Protect routes with middleware">
+    ```javascript router/clientes.Router.js
+    const express = require('express');
+    const service = require('../controllers/clientes.controllers');
+    const { authenticateToken } = require('../middleware/auth');
+    
+    const router = express.Router();
+    
+    // Protect all routes with authentication
+    router.get('/clientes', authenticateToken, service.obtenerListClientesService);
+    router.post('/clientes', authenticateToken, service.addDataCliente);
+    router.put('/clientes/:id', authenticateToken, service.updateDataCliente);
+    router.delete('/clientes/:id', authenticateToken, service.deleteDataCliente);
+    
+    module.exports = router;
+    ```
+  </Step>
+</Steps>
+
+### 2. API Key Authentication
+
+For simpler use cases, API key authentication may be sufficient:
+
+```javascript middleware/apiKey.js
+function validateApiKey(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  const validKeys = process.env.API_KEYS?.split(',') || [];
+  
+  if (!apiKey || !validKeys.includes(apiKey)) {
+    return res.status(403).json({ message: 'API key inválida' });
+  }
+  
+  next();
+}
+
+module.exports = { validateApiKey };
+```
+
+Usage:
+
+```javascript server.js
+const { validateApiKey } = require('./middleware/apiKey');
+
+// Apply to all routes
+app.use(validateApiKey);
+
+// Or apply to specific routes
+app.use('/clientes', validateApiKey, clientesRouter);
+```
+
+### 3. Session-Based Authentication
+
+For web applications with server-side rendering:
+
+```javascript
+const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
+
+const sessionStore = new MySQLStore({
+  host: 'localhost',
+  user: 'root',
+  password: '1234',
+  database: 'BDReservacion'
+});
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 24 hours
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' // HTTPS only in production
+  }
+}));
+```
+
+## Production Security Checklist
+
+<Accordion title="1. Implement Authentication">
+  - Add JWT or session-based authentication
+  - Require authentication for all sensitive endpoints
+  - Implement password hashing with bcrypt
+  - Create user management system
+</Accordion>
+
+<Accordion title="2. Configure CORS Properly">
+  ```javascript
+  const corsOptions = {
+    origin: ['https://yourdomain.com', 'https://www.yourdomain.com'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400 // 24 hours
+  };
+  
+  app.use(cors(corsOptions));
+  ```
+</Accordion>
+
+<Accordion title="3. Use Environment Variables">
+  Create a `.env` file:
+  
+  ```bash .env
+  DB_HOST=localhost
+  DB_USER=hotel_user
+  DB_PASSWORD=secure_password_here
+  DB_NAME=BDReservacion
+  JWT_SECRET=your-jwt-secret-key
+  PORT=4000
+  NODE_ENV=production
+  ```
+  
+  Install dotenv:
+  ```bash
+  npm install dotenv
+  ```
+  
+  Load in `server.js`:
+  ```javascript
+  require('dotenv').config();
+  ```
+</Accordion>
+
+<Accordion title="4. Add Input Validation">
+  ```javascript
+  const { body, validationResult } = require('express-validator');
+  
+  router.post('/clientes', [
+    body('nombre').isLength({ min: 2 }).trim().escape(),
+    body('correo').isEmail().normalizeEmail(),
+    body('telefono').matches(/^[0-9-]+$/)
+  ], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    // Process request
+  });
+  ```
+</Accordion>
+
+<Accordion title="5. Implement Rate Limiting">
+  ```javascript
+  const rateLimit = require('express-rate-limit');
+  
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100,
+    message: 'Demasiadas peticiones, intenta más tarde'
+  });
+  
+  app.use('/api/', apiLimiter);
+  ```
+</Accordion>
+
+<Accordion title="6. Enable HTTPS">
+  ```javascript
+  const https = require('https');
+  const fs = require('fs');
+  
+  const options = {
+    key: fs.readFileSync('path/to/private-key.pem'),
+    cert: fs.readFileSync('path/to/certificate.pem')
+  };
+  
+  https.createServer(options, app).listen(443);
+  ```
+</Accordion>
+
+<Accordion title="7. Add Security Headers">
+  ```javascript
+  const helmet = require('helmet');
+  app.use(helmet());
+  ```
+</Accordion>
+
+<Accordion title="8. Implement SQL Injection Protection">
+  The current implementation uses parameterized queries, which is good:
+  
+  ```javascript
+  // ✅ GOOD - Parameterized query
+  const SQL = "INSERT INTO cliente (nombre, correo, telefono) VALUES (?, ?, ?)";
+  conexion.query(SQL, [nombre, correo, telefono], callback);
+  
+  // ❌ BAD - String concatenation
+  const SQL = `INSERT INTO cliente VALUES ('${nombre}', '${correo}', '${telefono}')`;
+  ```
+  
+  Continue using parameterized queries for all database operations.
+</Accordion>
+
+## Authentication Flow Example
+
+Once JWT authentication is implemented, here's how clients should authenticate:
+
+<Steps>
+  <Step title="Login to get token">
+    ```bash
+    curl -X POST http://localhost:4000/login \
+      -H "Content-Type: application/json" \
+      -d '{"username":"admin","password":"password123"}'
+    ```
+    
+    Response:
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "username": "admin"
+    }
+    ```
+  </Step>
+  
+  <Step title="Use token for authenticated requests">
+    ```bash
+    curl http://localhost:4000/clientes \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    ```
+  </Step>
+  
+  <Step title="Handle token expiration">
+    If the token expires, the API returns:
+    ```json
+    {
+      "message": "Token inválido"
+    }
+    ```
+    
+    The client should redirect to login.
+  </Step>
+</Steps>
+
+## Frontend Integration
+
+Once authentication is implemented, update frontend code to include tokens:
+
+```javascript
+// Store token after login
+localStorage.setItem('authToken', token);
+
+// Include token in API requests
+const token = localStorage.getItem('authToken');
+
+fetch('http://localhost:4000/clientes', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+})
+  .then(response => {
+    if (response.status === 401) {
+      // Token expired or invalid, redirect to login
+      window.location.href = '/login';
+      return;
+    }
+    return response.json();
+  })
+  .then(data => console.log(data));
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Overview" icon="book" href="/api/overview">
+    Return to API documentation overview
+  </Card>
+  <Card title="Client Endpoints" icon="users" href="/api/clients">
+    Explore client management endpoints
+  </Card>
+</CardGroup>

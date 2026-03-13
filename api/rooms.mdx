@@ -1,0 +1,559 @@
+---
+title: Room Endpoints
+description: API endpoints for managing hotel rooms and inventory
+---
+
+## Overview
+
+The Rooms API provides CRUD operations for managing hotel room inventory. All endpoints are defined in `router/habitaciones.Router.js:1-12` and implemented in `controllers/habitaciones.controllers.js:1-38`.
+
+<Info>
+  Base URL: `http://localhost:4000`
+</Info>
+
+## Endpoints Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/habitaciones` | Get all rooms |
+| POST | `/habitaciones` | Create a new room |
+| PUT | `/habitaciones/:id` | Update a room |
+| DELETE | `/habitaciones/:id` | Delete a room |
+
+## Database Schema
+
+The `habitaciones` table has the following structure:
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT |
+| `nombre` | VARCHAR | NOT NULL |
+| `tipo` | VARCHAR | NOT NULL |
+| `precio` | DECIMAL | NOT NULL |
+
+---
+
+## Get All Rooms
+
+<CodeGroup>
+```http Request
+GET /habitaciones
+```
+
+```bash curl
+curl http://localhost:4000/habitaciones
+```
+
+```javascript fetch
+fetch('http://localhost:4000/habitaciones')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+const axios = require('axios');
+
+axios.get('http://localhost:4000/habitaciones')
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="response" type="array">
+  Array of room objects
+  
+  <Expandable title="Room Object">
+    <ResponseField name="id" type="integer">
+      Unique room identifier
+    </ResponseField>
+    <ResponseField name="nombre" type="string">
+      Room name or number (e.g., "101", "Suite Presidential")
+    </ResponseField>
+    <ResponseField name="tipo" type="string">
+      Room type (e.g., "Individual", "Doble", "Suite")
+    </ResponseField>
+    <ResponseField name="precio" type="decimal">
+      Room price per night
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json 200 OK
+[
+  {
+    "id": 1,
+    "nombre": "101",
+    "tipo": "Individual",
+    "precio": 50.00
+  },
+  {
+    "id": 2,
+    "nombre": "102",
+    "tipo": "Doble",
+    "precio": 75.00
+  },
+  {
+    "id": 3,
+    "nombre": "Suite Presidential",
+    "tipo": "Suite",
+    "precio": 200.00
+  }
+]
+```
+
+### Implementation
+
+From `controllers/habitaciones.controllers.js:3-9`:
+
+```javascript habitaciones.controllers.js
+exports.obtenerListHabitacionesService = (req, res) => {
+    const SQL = "SELECT * FROM `habitaciones`";
+    conexion.query(SQL, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+---
+
+## Create Room
+
+<CodeGroup>
+```http Request
+POST /habitaciones
+Content-Type: application/json
+
+{
+  "nombre": "101",
+  "tipo": "Individual",
+  "precio": 50.00
+}
+```
+
+```bash curl
+curl -X POST http://localhost:4000/habitaciones \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "101",
+    "tipo": "Individual",
+    "precio": 50.00
+  }'
+```
+
+```javascript fetch
+fetch('http://localhost:4000/habitaciones', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    nombre: '101',
+    tipo: 'Individual',
+    precio: 50.00
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.post('http://localhost:4000/habitaciones', {
+  nombre: '101',
+  tipo: 'Individual',
+  precio: 50.00
+})
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="nombre" type="string" required>
+  Room name or number (e.g., "101", "Suite Deluxe")
+</ParamField>
+
+<ParamField body="tipo" type="string" required>
+  Room type. Common values:
+  - `Individual` - Single occupancy room
+  - `Doble` - Double occupancy room
+  - `Suite` - Luxury suite
+  - `Familiar` - Family room
+</ParamField>
+
+<ParamField body="precio" type="decimal" required>
+  Room price per night (numeric value)
+</ParamField>
+
+### Response
+
+```json 200 OK
+{
+  "message": "hanitacion agregado"
+}
+```
+
+<Note>
+  The response message contains a typo from the original source code ("hanitacion" instead of "habitación").
+</Note>
+
+### Implementation
+
+From `controllers/habitaciones.controllers.js:11-18`:
+
+```javascript habitaciones.controllers.js
+exports.addDataHabitaciones = (req, res) => {
+    const { nombre, tipo, precio } = req.body;
+    const SQL = "INSERT INTO `habitaciones` (nombre, tipo, precio) VALUES (?, ?, ?)";
+    conexion.query(SQL, [nombre, tipo, precio], (err, results) => {
+        if (err) throw err;
+        res.json({ message: "hanitacion agregado" });
+    });
+};
+```
+
+---
+
+## Update Room
+
+<CodeGroup>
+```http Request
+PUT /habitaciones/:id
+Content-Type: application/json
+
+{
+  "nombre": "101A",
+  "tipo": "Doble",
+  "precio": 75.00
+}
+```
+
+```bash curl
+curl -X PUT http://localhost:4000/habitaciones/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "101A",
+    "tipo": "Doble",
+    "precio": 75.00
+  }'
+```
+
+```javascript fetch
+const roomId = 1;
+
+fetch(`http://localhost:4000/habitaciones/${roomId}`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    nombre: '101A',
+    tipo: 'Doble',
+    precio: 75.00
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.put('http://localhost:4000/habitaciones/1', {
+  nombre: '101A',
+  tipo: 'Doble',
+  precio: 75.00
+})
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the room to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="nombre" type="string" required>
+  Updated room name or number
+</ParamField>
+
+<ParamField body="tipo" type="string" required>
+  Updated room type
+</ParamField>
+
+<ParamField body="precio" type="decimal" required>
+  Updated room price per night
+</ParamField>
+
+### Response
+
+```json 200 OK
+{
+  "message": "habitacion actualizado"
+}
+```
+
+### Implementation
+
+From `controllers/habitaciones.controllers.js:20-28`:
+
+```javascript habitaciones.controllers.js
+exports.updateDataHabitaciones = (req, res) => {
+    const id = req.params.id;
+    const { nombre, tipo, precio  } = req.body;
+    const SQL = "UPDATE `habitaciones` SET nombre=?, tipo=?, precio=? WHERE id=?";
+    conexion.query(SQL, [nombre, tipo, precio, id], (err, results) => {
+        if (err) throw err;
+        res.json({ message: "habitacion actualizado" });
+    });
+};
+```
+
+---
+
+## Delete Room
+
+<CodeGroup>
+```http Request
+DELETE /habitaciones/:id
+```
+
+```bash curl
+curl -X DELETE http://localhost:4000/habitaciones/1
+```
+
+```javascript fetch
+const roomId = 1;
+
+fetch(`http://localhost:4000/habitaciones/${roomId}`, {
+  method: 'DELETE'
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.delete('http://localhost:4000/habitaciones/1')
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the room to delete
+</ParamField>
+
+### Response
+
+```json 200 OK
+{
+  "message": "habitacion eliminado"
+}
+```
+
+### Implementation
+
+From `controllers/habitaciones.controllers.js:30-37`:
+
+```javascript habitaciones.controllers.js
+exports.deleteDataHabitaciones = (req, res) => {
+    const id = req.params.id;
+    const SQL = "DELETE FROM `habitaciones` WHERE id=?";
+    conexion.query(SQL, id, (err, results) => {
+        if (err) throw err;
+        res.json({ message: "habitacion eliminado" });
+    });
+};
+```
+
+<Warning>
+  Deleting a room is permanent and may affect existing reservations if foreign key constraints are in place.
+</Warning>
+
+---
+
+## Room Types Reference
+
+Common room types used in the system:
+
+<AccordionGroup>
+  <Accordion title="Individual">
+    Single occupancy room with one bed. Ideal for solo travelers.
+    
+    **Typical pricing**: $40 - $60 per night
+  </Accordion>
+  
+  <Accordion title="Doble">
+    Double occupancy room with two beds or one double bed. Suitable for couples or two guests.
+    
+    **Typical pricing**: $60 - $90 per night
+  </Accordion>
+  
+  <Accordion title="Suite">
+    Luxury room with separate living area and bedroom. Premium amenities.
+    
+    **Typical pricing**: $150 - $300 per night
+  </Accordion>
+  
+  <Accordion title="Familiar">
+    Family room with multiple beds. Accommodates 3-4 guests.
+    
+    **Typical pricing**: $100 - $150 per night
+  </Accordion>
+</AccordionGroup>
+
+## Complete Room Management Example
+
+```javascript Room Management Workflow
+const API_URL = 'http://localhost:4000/habitaciones';
+
+// Add multiple rooms to inventory
+async function initializeRoomInventory() {
+  const rooms = [
+    { nombre: '101', tipo: 'Individual', precio: 50.00 },
+    { nombre: '102', tipo: 'Individual', precio: 50.00 },
+    { nombre: '201', tipo: 'Doble', precio: 75.00 },
+    { nombre: '202', tipo: 'Doble', precio: 75.00 },
+    { nombre: '301', tipo: 'Suite', precio: 200.00 }
+  ];
+  
+  for (const room of rooms) {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(room)
+    });
+  }
+  
+  console.log('Room inventory initialized');
+}
+
+// Get available rooms by type
+async function getRoomsByType(tipo) {
+  const response = await fetch(API_URL);
+  const rooms = await response.json();
+  return rooms.filter(room => room.tipo === tipo);
+}
+
+// Update room pricing (e.g., seasonal adjustment)
+async function updateRoomPricing(roomId, newPrice) {
+  // First, get current room data
+  const response = await fetch(API_URL);
+  const rooms = await response.json();
+  const room = rooms.find(r => r.id === roomId);
+  
+  if (!room) {
+    console.error('Room not found');
+    return;
+  }
+  
+  // Update with new price
+  await fetch(`${API_URL}/${roomId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...room,
+      precio: newPrice
+    })
+  });
+  
+  console.log(`Room ${roomId} price updated to $${newPrice}`);
+}
+
+// Usage
+(async () => {
+  await initializeRoomInventory();
+  const suites = await getRoomsByType('Suite');
+  console.log('Available suites:', suites);
+  await updateRoomPricing(1, 55.00); // Increase price
+})();
+```
+
+## Advanced Queries
+
+For more complex room management scenarios, you can extend the API:
+
+### Filter by Price Range
+
+```javascript Enhanced Controller
+// Add to habitaciones.controllers.js
+exports.getRoomsByPriceRange = (req, res) => {
+    const { minPrice, maxPrice } = req.query;
+    const SQL = "SELECT * FROM `habitaciones` WHERE precio BETWEEN ? AND ?";
+    conexion.query(SQL, [minPrice, maxPrice], (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+```javascript Router
+// Add to habitaciones.Router.js
+router.get('/habitaciones/filter', service.getRoomsByPriceRange);
+```
+
+```bash Usage
+curl "http://localhost:4000/habitaciones/filter?minPrice=50&maxPrice=100"
+```
+
+### Search by Room Type
+
+```javascript
+exports.searchByType = (req, res) => {
+    const { tipo } = req.params;
+    const SQL = "SELECT * FROM `habitaciones` WHERE tipo = ?";
+    conexion.query(SQL, [tipo], (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+## Validation Recommendations
+
+```javascript Input Validation
+const { body, validationResult } = require('express-validator');
+
+router.post('/habitaciones', [
+  body('nombre')
+    .trim()
+    .notEmpty()
+    .withMessage('Nombre de habitación requerido'),
+  body('tipo')
+    .isIn(['Individual', 'Doble', 'Suite', 'Familiar'])
+    .withMessage('Tipo de habitación inválido'),
+  body('precio')
+    .isFloat({ min: 0 })
+    .withMessage('Precio debe ser un número positivo')
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  service.addDataHabitaciones(req, res);
+});
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Client Endpoints" icon="users" href="/api/clients">
+    Manage hotel guests
+  </Card>
+  <Card title="Reservation Endpoints" icon="calendar" href="/api/reservations">
+    Link rooms to reservations
+  </Card>
+</CardGroup>

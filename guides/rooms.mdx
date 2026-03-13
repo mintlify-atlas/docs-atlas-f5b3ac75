@@ -1,0 +1,749 @@
+---
+title: Room Management
+description: Comprehensive guide to managing hotel rooms and room types
+icon: bed
+---
+
+## Overview
+
+The Room Management module enables hotel administrators to manage room inventory, including room numbers, types, and pricing. This guide covers all room operations with practical examples from the application.
+
+<Note>
+  Room data includes room number (nombre), type (tipo), and price (precio). All operations use the REST API endpoint `http://localhost:4000/habitaciones`.
+</Note>
+
+## Room Data Structure
+
+Each room record contains the following fields:
+
+| Field | Type | Description | Example |
+|-------|------|-------------|----------|
+| `id` | Integer | Auto-generated unique identifier | 1 |
+| `nombre` | String | Room number or identifier | "101", "Suite Presidential" |
+| `tipo` | String | Room type or category | "Single", "Double", "Suite" |
+| `precio` | Decimal/String | Price per night | "150.00" |
+
+## Getting Started
+
+<Steps>
+
+### Step 1: Access the Room Management Interface
+
+Navigate to `habitaciones.html` to access the room management interface. The page provides a complete view of all available rooms.
+
+### Step 2: Understanding the Interface
+
+The UI includes:
+- A responsive data table displaying all rooms
+- "Nueva Habitación" (New Room) button
+- Update and Delete actions for each room
+- Bootstrap modals for data entry
+- Native HTML dialog for updates
+
+### Step 3: Configure the API Connection
+
+```javascript
+const URL = 'http://localhost:4000/habitaciones';
+let data = null;
+```
+
+</Steps>
+
+## CRUD Operations
+
+### Reading Room Data
+
+The application loads all rooms automatically when the page initializes.
+
+#### Loading All Rooms
+
+```javascript
+async function loadDataHabitacion() {
+    try {
+        const response = await fetch(URL);
+        data = await response.json();
+
+        let html = '';
+        data.forEach(habitacion => {
+            html += `
+            <tr>
+                <td>${habitacion.id}</td>
+                <td>${habitacion.nombre}</td>
+                <td>${habitacion.tipo}</td>
+                <td>${habitacion.precio}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="modificarDataHabitacion(${habitacion.id})">Actualizar</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteDataHabitacion(${habitacion.id})">Eliminar</button>
+                </td>
+            </tr>`;
+        });
+
+        T_DATA_HABITACION.innerHTML = html;
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+**Key Features:**
+- Asynchronous data fetching with `fetch()` API
+- Dynamic HTML generation for table rows
+- Error handling with try-catch
+- Inline action buttons with room ID binding
+
+#### Backend Controller
+
+The backend retrieves rooms from the MySQL database:
+
+```javascript
+exports.obtenerListHabitacionesService = (req, res) => {
+    const SQL = "SELECT * FROM `habitaciones`";
+    conexion.query(SQL, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+**Route:** `GET /habitaciones`
+
+<Note>
+  The controller executes a simple SELECT query and returns all room records as a JSON array.
+</Note>
+
+### Creating New Rooms
+
+<Tabs>
+  <Tab title="Frontend">
+    Add new rooms using the `guardarDataHabitacion()` function:
+
+    ```javascript
+    async function guardarDataHabitacion() {
+        const dataHabitacion = {
+            nombre: document.getElementById("roomName").value,
+            tipo: document.getElementById("roomType").value,
+            precio: document.getElementById("roomPrice").value
+        };
+
+        try {
+            const response = await fetch(URL, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataHabitacion)
+            });
+
+            if (!response.ok) throw new Error('Error al guardar habitación');
+
+            loadDataHabitacion();
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    ```
+
+    **Process Flow:**
+    1. Collect form data from input fields
+    2. Create a room object with all required fields
+    3. Send POST request with JSON payload
+    4. Refresh the room list on successful creation
+    5. Handle any errors gracefully
+  </Tab>
+
+  <Tab title="Backend">
+    The backend controller handles room creation:
+
+    ```javascript
+    exports.addDataHabitaciones = (req, res) => {
+        const { nombre, tipo, precio } = req.body;
+        const SQL = "INSERT INTO `habitaciones` (nombre, tipo, precio) VALUES (?, ?, ?)";
+        conexion.query(SQL, [nombre, tipo, precio], (err, results) => {
+            if (err) throw err;
+            res.json({ message: "hanitacion agregado" });
+        });
+    };
+    ```
+
+    **Route:** `POST /habitaciones`
+
+    **Request Body:**
+    ```json
+    {
+      "nombre": "201",
+      "tipo": "Double",
+      "precio": "180.00"
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "message": "hanitacion agregado"
+    }
+    ```
+  </Tab>
+
+  <Tab title="HTML Form">
+    The room creation form from `habitaciones.html`:
+
+    ```html
+    <div class="modal fade" id="formData" tabindex="-1" aria-labelledby="formDataLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="formDataLabel">Nueva Habitación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="roomName" class="form-label">Numero</label>
+                            <input type="text" class="form-control" id="roomName" placeholder="Ingrese el nombre">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomType" class="form-label">Tipo</label>
+                            <input type="text" class="form-control" id="roomType" placeholder="Ingrese el tipo">
+                        </div>
+                        <div class="mb-3">
+                            <label for="roomPrice" class="form-label">Precio</label>
+                            <input type="text" class="form-control" id="roomPrice" placeholder="Ingrese el precio">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarDataHabitacion()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    ```
+
+    **Bootstrap Modal Features:**
+    - Centered dialog with `modal-dialog-centered`
+    - Accessible with proper ARIA attributes
+    - Close button with automatic dismiss
+    - Form validation can be added easily
+  </Tab>
+</Tabs>
+
+### Updating Existing Rooms
+
+Room updates follow a two-phase pattern: selection and submission.
+
+#### Phase 1: Opening the Update Dialog
+
+```javascript
+function modificarDataHabitacion(id) {
+    const dataHabitacion = data.find(habitacion => habitacion.id === id);
+    document.getElementById("roomNameU").value = dataHabitacion.nombre;
+    document.getElementById("roomTypeU").value = dataHabitacion.tipo;
+    document.getElementById("roomPriceU").value = dataHabitacion.precio;
+
+    const dialog = document.getElementById("formDataHabitacion");
+    dialog.dataset.habitacionId = id;
+    dialog.showModal();
+}
+```
+
+**Key Features:**
+- Uses JavaScript `find()` method to locate room by ID
+- Pre-populates form fields with current values
+- Stores room ID in the dialog's dataset for later retrieval
+- Uses native HTML5 `<dialog>` element with `showModal()`
+
+#### Phase 2: Submitting Updates
+
+```javascript
+async function actualizarDataHabitacion() {
+    const dialog = document.getElementById("formDataHabitacion");
+    const id = dialog.dataset.habitacionId;
+
+    const dataHabitacion = {
+        nombre: document.getElementById("roomNameU").value,
+        tipo: document.getElementById("roomTypeU").value,
+        precio: document.getElementById("roomPriceU").value
+    };
+
+    try {
+        const response = await fetch(`${URL}/${id}`, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataHabitacion)
+        });
+
+        if (!response.ok) throw new Error('Error al actualizar habitación');
+
+        dialog.close();
+        loadDataHabitacion();
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+**Update Flow:**
+1. Retrieve room ID from dialog dataset
+2. Collect updated values from form
+3. Send PUT request to `/habitaciones/:id`
+4. Close dialog on success
+5. Refresh room list to show changes
+
+#### Backend Update Handler
+
+```javascript
+exports.updateDataHabitaciones = (req, res) => {
+    const id = req.params.id;
+    const { nombre, tipo, precio  } = req.body;
+    const SQL = "UPDATE `habitaciones` SET nombre=?, tipo=?, precio=? WHERE id=?";
+    conexion.query(SQL, [nombre, tipo, precio, id], (err, results) => {
+        if (err) throw err;
+        res.json({ message: "habitacion actualizado" });
+    });
+};
+```
+
+**Route:** `PUT /habitaciones/:id`
+
+<Warning>
+  Ensure price values are properly validated. Consider using decimal type validation to prevent invalid price entries.
+</Warning>
+
+### Deleting Rooms
+
+Room deletion permanently removes the record from the database.
+
+```javascript
+async function deleteDataHabitacion(id) {
+    try {
+        const response = await fetch(`${URL}/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error('Error al eliminar habitación');
+
+        loadDataHabitacion();
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+<Warning>
+  Deleting a room that has active reservations may cause data integrity issues. Implement validation to check for existing reservations before deletion.
+</Warning>
+
+#### Backend Delete Handler
+
+```javascript
+exports.deleteDataHabitaciones = (req, res) => {
+    const id = req.params.id;
+    const SQL = "DELETE FROM `habitaciones` WHERE id=?";
+    conexion.query(SQL, id, (err, results) => {
+        if (err) throw err;
+        res.json({ message: "habitacion eliminado" });
+    });
+};
+```
+
+**Route:** `DELETE /habitaciones/:id`
+
+#### Closing the Dialog
+
+```javascript
+function cerrarDialogo() {
+    const dialog = document.getElementById("formDataHabitacion");
+    dialog.close();
+}
+```
+
+## API Reference
+
+### Complete Endpoint Documentation
+
+<CardGroup cols={2}>
+  <Card title="GET /habitaciones" icon="list">
+    Retrieve all rooms
+    
+    **Response:**
+    ```json
+    [
+      {
+        "id": 1,
+        "nombre": "101",
+        "tipo": "Single",
+        "precio": "120.00"
+      },
+      {
+        "id": 2,
+        "nombre": "201",
+        "tipo": "Double",
+        "precio": "180.00"
+      }
+    ]
+    ```
+  </Card>
+
+  <Card title="POST /habitaciones" icon="plus">
+    Create a new room
+    
+    **Request Body:**
+    ```json
+    {
+      "nombre": "301",
+      "tipo": "Suite",
+      "precio": "350.00"
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "message": "hanitacion agregado"
+    }
+    ```
+  </Card>
+
+  <Card title="PUT /habitaciones/:id" icon="pen">
+    Update an existing room
+    
+    **URL Parameter:** `id` (integer)
+    
+    **Request Body:**
+    ```json
+    {
+      "nombre": "101A",
+      "tipo": "Deluxe Single",
+      "precio": "150.00"
+    }
+    ```
+  </Card>
+
+  <Card title="DELETE /habitaciones/:id" icon="trash">
+    Delete a room
+    
+    **URL Parameter:** `id` (integer)
+    
+    **Response:**
+    ```json
+    {
+      "message": "habitacion eliminado"
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Room Types and Pricing
+
+### Common Room Types
+
+The system supports flexible room type definitions. Here are common examples:
+
+| Room Type | Description | Typical Price Range |
+|-----------|-------------|---------------------|
+| Single | One bed, basic amenities | $80 - $150 |
+| Double | Two beds or one double bed | $120 - $200 |
+| Suite | Multiple rooms, premium amenities | $250 - $500 |
+| Presidential Suite | Luxury suite with full services | $500+ |
+| Economy | Basic room, budget-friendly | $50 - $100 |
+
+<Note>
+  Room types are stored as free-text fields, allowing flexibility in naming conventions.
+</Note>
+
+## Best Practices
+
+<Accordion title="Price Formatting">
+  Always format prices consistently:
+  
+  ```javascript
+  function formatPrice(price) {
+      // Convert to number and format with 2 decimals
+      return parseFloat(price).toFixed(2);
+  }
+  
+  // Usage example
+  const dataHabitacion = {
+      nombre: document.getElementById("roomName").value,
+      tipo: document.getElementById("roomType").value,
+      precio: formatPrice(document.getElementById("roomPrice").value)
+  };
+  ```
+  
+  **Benefits:**
+  - Consistent price display
+  - Prevents invalid price entries
+  - Easier for calculations
+</Accordion>
+
+<Accordion title="Room Number Validation">
+  Validate room numbers before creating or updating:
+  
+  ```javascript
+  function validateRoomNumber(nombre) {
+      // Check if room number already exists
+      const exists = data.some(room => room.nombre === nombre);
+      
+      if (exists) {
+          alert('Este número de habitación ya existe');
+          return false;
+      }
+      
+      return true;
+  }
+  
+  async function guardarDataHabitacionWithValidation() {
+      const nombre = document.getElementById("roomName").value;
+      const tipo = document.getElementById("roomType").value;
+      const precio = document.getElementById("roomPrice").value;
+      
+      // Validate room number
+      if (!validateRoomNumber(nombre)) {
+          return;
+      }
+      
+      const dataHabitacion = { nombre, tipo, precio };
+      
+      try {
+          const response = await fetch(URL, {
+              method: "POST",
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dataHabitacion)
+          });
+
+          if (!response.ok) throw new Error('Error al guardar habitación');
+          loadDataHabitacion();
+
+      } catch (error) {
+          console.error(error);
+          alert('Error al guardar la habitación');
+      }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Room Type Dropdown">
+  Consider using a dropdown instead of free text for room types:
+  
+  ```html
+  <div class="mb-3">
+      <label for="roomType" class="form-label">Tipo</label>
+      <select class="form-control" id="roomType">
+          <option value="">Seleccione un tipo</option>
+          <option value="Single">Single</option>
+          <option value="Double">Double</option>
+          <option value="Suite">Suite</option>
+          <option value="Presidential Suite">Presidential Suite</option>
+          <option value="Economy">Economy</option>
+      </select>
+  </div>
+  ```
+  
+  **Advantages:**
+  - Consistent data entry
+  - Prevents typos
+  - Easier to filter and search
+  - Better user experience
+</Accordion>
+
+<Accordion title="Confirmation Dialogs">
+  Add confirmation before deleting rooms:
+  
+  ```javascript
+  async function deleteDataHabitacionWithConfirmation(id) {
+      const habitacion = data.find(h => h.id === id);
+      
+      if (!confirm(`¿Está seguro de eliminar la habitación ${habitacion.nombre}?`)) {
+          return;
+      }
+      
+      try {
+          const response = await fetch(`${URL}/${id}`, { method: "DELETE" });
+          if (!response.ok) throw new Error('Error al eliminar habitación');
+
+          alert('Habitación eliminada exitosamente');
+          loadDataHabitacion();
+
+      } catch (error) {
+          console.error(error);
+          alert('Error al eliminar la habitación');
+      }
+  }
+  ```
+</Accordion>
+
+## Advanced Features
+
+### Filtering Rooms by Type
+
+```javascript
+function filterRoomsByType(tipo) {
+    const filteredData = tipo === 'all' 
+        ? data 
+        : data.filter(habitacion => habitacion.tipo === tipo);
+    
+    let html = '';
+    filteredData.forEach(habitacion => {
+        html += `
+        <tr>
+            <td>${habitacion.id}</td>
+            <td>${habitacion.nombre}</td>
+            <td>${habitacion.tipo}</td>
+            <td>${habitacion.precio}</td>
+            <td>
+                <button type="button" class="btn btn-primary btn-sm" onclick="modificarDataHabitacion(${habitacion.id})">Actualizar</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteDataHabitacion(${habitacion.id})">Eliminar</button>
+            </td>
+        </tr>`;
+    });
+    
+    T_DATA_HABITACION.innerHTML = html;
+}
+```
+
+### Sorting Rooms
+
+```javascript
+function sortRooms(field, order = 'asc') {
+    const sortedData = [...data].sort((a, b) => {
+        if (field === 'precio') {
+            // Numeric sort for prices
+            return order === 'asc' 
+                ? parseFloat(a.precio) - parseFloat(b.precio)
+                : parseFloat(b.precio) - parseFloat(a.precio);
+        } else {
+            // String sort for other fields
+            return order === 'asc'
+                ? a[field].localeCompare(b[field])
+                : b[field].localeCompare(a[field]);
+        }
+    });
+    
+    // Re-render table with sorted data
+    renderRoomTable(sortedData);
+}
+```
+
+### Search Functionality
+
+```javascript
+function searchRooms(query) {
+    const lowerQuery = query.toLowerCase();
+    
+    const results = data.filter(habitacion => 
+        habitacion.nombre.toLowerCase().includes(lowerQuery) ||
+        habitacion.tipo.toLowerCase().includes(lowerQuery)
+    );
+    
+    let html = '';
+    results.forEach(habitacion => {
+        html += `
+        <tr>
+            <td>${habitacion.id}</td>
+            <td>${habitacion.nombre}</td>
+            <td>${habitacion.tipo}</td>
+            <td>${habitacion.precio}</td>
+            <td>
+                <button type="button" class="btn btn-primary btn-sm" onclick="modificarDataHabitacion(${habitacion.id})">Actualizar</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteDataHabitacion(${habitacion.id})">Eliminar</button>
+            </td>
+        </tr>`;
+    });
+    
+    T_DATA_HABITACION.innerHTML = html || '<tr><td colspan="5" class="text-center">No se encontraron resultados</td></tr>';
+}
+```
+
+## Database Schema
+
+The `habitaciones` table structure:
+
+```sql
+CREATE TABLE `habitaciones` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(100) NOT NULL,
+  `tipo` VARCHAR(100) NOT NULL,
+  `precio` DECIMAL(10, 2) NOT NULL
+);
+```
+
+## Complete Example Workflow
+
+<Steps>
+
+### Step 1: Initialize the Page
+
+```javascript
+// Page loads and automatically fetches room data
+loadDataHabitacion();
+```
+
+### Step 2: Add a New Room
+
+Admin clicks "Nueva Habitación" button and fills the form:
+- Numero: "305"
+- Tipo: "Suite"
+- Precio: "400.00"
+
+### Step 3: Save the Room
+
+```javascript
+guardarDataHabitacion();
+// POST http://localhost:4000/habitaciones
+```
+
+### Step 4: Backend Processes
+
+```javascript
+// INSERT INTO habitaciones (nombre, tipo, precio) VALUES ('305', 'Suite', '400.00')
+```
+
+### Step 5: Update Display
+
+```javascript
+loadDataHabitacion();
+// Refreshes the table with the new room included
+```
+
+### Step 6: Modify Room Price
+
+Admin clicks "Actualizar" on room 305 and changes price to "375.00"
+
+### Step 7: Submit Update
+
+```javascript
+actualizarDataHabitacion();
+// PUT http://localhost:4000/habitaciones/5
+```
+
+</Steps>
+
+## Integration with Reservations
+
+Rooms are linked to reservations. Before implementing room management, consider:
+
+<Warning>
+  - Do not delete rooms with active reservations
+  - Price changes affect future reservations only
+  - Room number changes may break existing references
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Management" icon="users" href="/guides/clients">
+    Learn about managing hotel clients
+  </Card>
+  
+  <Card title="Reservations" icon="calendar" href="/guides/reservations">
+    Create reservations for rooms
+  </Card>
+  
+  <Card title="Frontend Integration" icon="code" href="/guides/frontend-integration">
+    Understand the API integration patterns
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/guides/troubleshooting">
+    Fix common room management issues
+  </Card>
+</CardGroup>

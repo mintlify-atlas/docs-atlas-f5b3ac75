@@ -1,80 +1,414 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get your Hotel Reservation System up and running in 5 minutes'
+icon: 'rocket'
 ---
 
-## Get started in three steps
+## Welcome to the Hotel Reservation System
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This quickstart guide will help you set up and run the Hotel Reservation System from zero to a fully functional application. You'll have a working backend API and frontend interface managing hotel reservations in just a few minutes.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  This system is built with Node.js, Express, and MySQL. Make sure you have these prerequisites installed before starting.
 </Note>
+
+## What You'll Build
+
+By the end of this quickstart, you'll have:
+
+- A REST API server running on port 4000
+- MySQL database with tables for clients, rooms (habitaciones), and reservations
+- A web interface to manage reservations, clients, and hotel rooms
+- Full CRUD operations for all entities
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v14 or higher)
+- **MySQL** (v5.7 or higher)
+- **npm** (comes with Node.js)
+- A code editor (VS Code recommended)
+- A web browser
+
+<Tip>
+  Check your installations by running:
+  ```bash
+  node --version
+  npm --version
+  mysql --version
+  ```
+</Tip>
+
+## Quick Setup Steps
+
+<Steps>
+  <Step title="Clone and Navigate">
+    First, navigate to your backend directory:
+    
+    ```bash
+    cd reservacionBackEnd/reservaionFronEnd
+    ```
+    
+    This directory contains the Node.js/Express backend application.
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+    
+    ```bash
+    npm install
+    ```
+    
+    This will install:
+    - `express` - Web framework
+    - `body-parser` - Request body parsing middleware
+    - `cors` - Cross-Origin Resource Sharing
+    - `mysql2` - MySQL database driver
+    
+    <Note>
+      Installation typically takes 30-60 seconds depending on your internet connection.
+    </Note>
+  </Step>
+
+  <Step title="Set Up the Database">
+    Create the MySQL database and tables:
+    
+    ```sql
+    CREATE DATABASE BDReservacion;
+    USE BDReservacion;
+    
+    -- Create cliente table
+    CREATE TABLE cliente (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(255) NOT NULL,
+        correo VARCHAR(255) NOT NULL,
+        telefono VARCHAR(20) NOT NULL
+    );
+    
+    -- Create habitaciones table
+    CREATE TABLE habitaciones (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(255) NOT NULL,
+        tipo VARCHAR(100) NOT NULL,
+        precio DECIMAL(10, 2) NOT NULL
+    );
+    
+    -- Create reservaciones table
+    CREATE TABLE reservaciones (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        folio VARCHAR(50) NOT NULL,
+        nombrecliente VARCHAR(255) NOT NULL
+    );
+    ```
+    
+    <Tip>
+      You can run these commands in MySQL Workbench or via the command line using `mysql -u root -p`.
+    </Tip>
+  </Step>
+
+  <Step title="Configure Database Connection">
+    Update the database credentials in `model/database.js`:
+    
+    ```javascript model/database.js
+    const mysql = require('mysql2');
+    
+    const conexion = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: '1234',  // Change this to your MySQL password
+        database: 'BDReservacion'
+    });
+    
+    conexion.connect((err) =>{
+        if (err) throw err;
+        console.log("Conexion exitosa a la base de datos")
+    });
+    
+    module.exports = conexion;
+    ```
+    
+    <Warning>
+      Make sure to update the `password` field with your actual MySQL root password.
+    </Warning>
+  </Step>
+
+  <Step title="Start the Server">
+    Start the Express server:
+    
+    ```bash
+    node server.js
+    ```
+    
+    You should see:
+    ```
+    Servidor iniciado en el puerto 4000
+    Conexion exitosa a la base de datos
+    ```
+    
+    <Note>
+      The server runs on port 4000 by default. Make sure this port is not in use by another application.
+    </Note>
+  </Step>
+
+  <Step title="Open the Frontend">
+    Open the frontend files in your browser. Navigate to the parent directory:
+    
+    ```bash
+    cd ..
+    ```
+    
+    Then open any of these HTML files:
+    - `index.html` - Client management interface
+    - `habitaciones.html` - Room management interface
+    - `reservaciones.html` - Reservation management interface
+    - `Menu.html` - Navigation menu
+    
+    <Tip>
+      You can open these files directly in your browser or use a local development server like Live Server in VS Code.
+    </Tip>
+  </Step>
+</Steps>
+
+## Test Your Installation
+
+Let's verify everything is working correctly:
+
+### Test the API Endpoints
+
+<CodeGroup>
+  ```bash cURL - Get All Clients
+  curl http://localhost:4000/clientes
+  ```
+  
+  ```bash cURL - Create a Client
+  curl -X POST http://localhost:4000/clientes \
+    -H "Content-Type: application/json" \
+    -d '{"nombre":"Juan Perez","correo":"[email protected]","telefono":"555-1234"}'
+  ```
+  
+  ```bash cURL - Get All Rooms
+  curl http://localhost:4000/habitaciones
+  ```
+  
+  ```bash cURL - Get All Reservations
+  curl http://localhost:4000/reservaciones
+  ```
+</CodeGroup>
+
+### Expected Response
+
+For a GET request to `/clientes`, you should receive:
+
+```json
+[
+  {
+    "id": 1,
+    "nombre": "Juan Perez",
+    "correo": "[email protected]",
+    "telefono": "555-1234"
+  }
+]
+```
+
+## Create Your First Reservation
+
+Let's walk through creating a complete reservation workflow:
+
+<Steps>
+  <Step title="Add a Client">
+    Open `index.html` in your browser and add a client:
+    
+    - Name: Juan Perez
+    - Email: [email protected]
+    - Phone: 555-1234
+    
+    Click the submit button to save.
+  </Step>
+
+  <Step title="Add a Room">
+    Open `habitaciones.html` and add a hotel room:
+    
+    - Name: Suite 101
+    - Type: Suite
+    - Price: 150.00
+    
+    The room will be saved to the database.
+  </Step>
+
+  <Step title="Create a Reservation">
+    Open `reservaciones.html` and create a reservation:
+    
+    - Folio: RES-001
+    - Client Name: Juan Perez
+    
+    The reservation is now active in the system.
+  </Step>
+</Steps>
+
+## Understanding the Project Structure
+
+Here's how the project is organized:
+
+```
+reservacionBackEnd/
+├── reservaionFronEnd/          # Backend API
+│   ├── server.js               # Express server entry point
+│   ├── package.json            # Dependencies
+│   ├── model/
+│   │   └── database.js         # MySQL connection
+│   ├── controllers/
+│   │   ├── clientes.controllers.js
+│   │   ├── habitaciones.controllers.js
+│   │   └── reservaciones.controllers.js
+│   └── router/
+│       ├── clientes.Router.js
+│       ├── habitaciones.Router.js
+│       └── reservaciones.Router.js
+├── index.html                  # Client management UI
+├── habitaciones.html           # Room management UI
+├── reservaciones.html          # Reservation management UI
+├── Menu.html                   # Navigation menu
+└── js/
+    ├── scripts.js              # Client UI logic
+    ├── scriptshabitaciones.js  # Room UI logic
+    └── scriptsreservaciones.js # Reservation UI logic
+```
+
+## Available API Endpoints
+
+Your server exposes the following REST API endpoints:
+
+### Clients Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/clientes` | Get all clients |
+| POST | `/clientes` | Create a new client |
+| PUT | `/clientes/:id` | Update a client |
+| DELETE | `/clientes/:id` | Delete a client |
+
+### Rooms (Habitaciones) Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/habitaciones` | Get all rooms |
+| POST | `/habitaciones` | Create a new room |
+| PUT | `/habitaciones/:id` | Update a room |
+| DELETE | `/habitaciones/:id` | Delete a room |
+
+### Reservations Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/reservaciones` | Get all reservations |
+| POST | `/reservaciones` | Create a new reservation |
+| PUT | `/reservaciones/:id` | Update a reservation |
+| DELETE | `/reservaciones/:id` | Delete a reservation |
+
+## Common Issues and Solutions
+
+<AccordionGroup>
+  <Accordion title="Server won't start - Port already in use">
+    If you see an error about port 4000 being in use:
+    
+    1. Find the process using the port:
+       ```bash
+       # On Linux/Mac
+       lsof -i :4000
+       
+       # On Windows
+       netstat -ano | findstr :4000
+       ```
+    
+    2. Kill the process or change the port in `server.js`:
+       ```javascript
+       const PORT = 5000; // Change to any available port
+       ```
+  </Accordion>
+
+  <Accordion title="Database connection failed">
+    If you see "Error connecting to database":
+    
+    1. Verify MySQL is running:
+       ```bash
+       # On Linux
+       sudo systemctl status mysql
+       
+       # On Windows
+       services.msc (look for MySQL)
+       ```
+    
+    2. Check your credentials in `model/database.js`
+    3. Ensure the database `BDReservacion` exists
+  </Accordion>
+
+  <Accordion title="CORS errors in browser console">
+    The server already has CORS enabled in `server.js`:
+    
+    ```javascript
+    const cors = require("cors");
+    app.use(cors());
+    ```
+    
+    If you still see CORS errors, ensure the frontend is making requests to `http://localhost:4000`.
+  </Accordion>
+
+  <Accordion title="npm install fails">
+    Try clearing the npm cache and reinstalling:
+    
+    ```bash
+    npm cache clean --force
+    rm -rf node_modules
+    rm package-lock.json
+    npm install
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you have the system running, explore these topics:
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="download" href="/setup/installation">
+    Deep dive into system requirements and installation options
+  </Card>
+  
+  <Card title="Database Setup" icon="database" href="/setup/database">
+    Learn about database schema and advanced configuration
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/setup/configuration">
+    Customize ports, CORS, and environment variables
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Detailed documentation of all API endpoints
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+If you encounter any issues:
+
+- Check the server console for error messages
+- Review the browser console for frontend errors
+- Verify all dependencies are installed correctly
+- Ensure MySQL is running and accessible
+
+<Tip>
+  Enable detailed error logging by checking the controller files - errors are logged to the console.
+</Tip>
+
+## What You've Accomplished
+
+Congratulations! You now have:
+
+- ✅ A fully functional REST API server
+- ✅ A MySQL database with proper schema
+- ✅ Three management interfaces (clients, rooms, reservations)
+- ✅ Full CRUD operations for all entities
+- ✅ CORS-enabled API for frontend integration
+
+You're ready to start building on top of this foundation!

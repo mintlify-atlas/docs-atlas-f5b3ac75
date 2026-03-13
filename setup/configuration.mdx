@@ -1,0 +1,768 @@
+---
+title: 'Configuration'
+description: 'Configure your Hotel Reservation System for development and production'
+icon: 'gear'
+---
+
+## Overview
+
+This guide covers all configuration options for the Hotel Reservation System, including server settings, database connection, CORS policies, and environment-specific configurations.
+
+<Note>
+  The application configuration is split between `server.js` (server settings) and `model/database.js` (database settings).
+</Note>
+
+## Server Configuration
+
+The main server configuration is in `server.js` at the root of the backend directory.
+
+### Default Server Setup
+
+```javascript server.js
+//Paso 1: Importar los paquetes instalados: express y body.parser
+const express = require('express');
+const bodyParser = require('body-parser');
+const clientesRouter = require('./router/clientes.Router');
+const habitacionRouter = require('./router/habitaciones.Router');
+const reservacionRouter = require('./router/reservaciones.Router');
+const cors = require("cors");
+
+//Paso 2: Crear una instancia de EXPRESS
+const app = express();
+
+//Paso 3: Definir el número de puerto
+const PORT = 4000;
+//Puertos de servicios: mysql: 3306, http:80,8080, ftp: 21 y 22, etc.
+
+//Paso 4: Configurar el Middleware, que es un intermediario entre las peticiones de las aplicaciones cliente y el servidor.
+//Inicio del Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(clientesRouter)
+app.use(habitacionRouter)
+app.use(reservacionRouter)
+//Termino del Middleware
+
+//Paso 5: Definir el metodo para ejecutar el servidor.
+app.listen(PORT, () => {
+    console.log(`Servidor iniciado en el puerto ${PORT}`);
+})
+```
+
+**Key Configuration Points:**
+
+- **Line 13:** Port configuration (`const PORT = 4000`)
+- **Line 18:** CORS middleware (`app.use(cors())`)
+- **Line 19:** JSON body parser (`app.use(bodyParser.json())`)
+- **Lines 20-22:** Route registration
+- **Line 26:** Server startup
+
+## Port Configuration
+
+The server runs on port 4000 by default.
+
+### Changing the Port
+
+<Tabs>
+  <Tab title="Hardcoded Port">
+    Edit `server.js` line 13:
+    
+    ```javascript server.js
+    const PORT = 5000; // Change to your desired port
+    ```
+  </Tab>
+  
+  <Tab title="Environment Variable">
+    Use an environment variable for flexibility:
+    
+    ```javascript server.js
+    const PORT = process.env.PORT || 4000;
+    ```
+    
+    Then set the environment variable:
+    
+    ```bash
+    # Linux/macOS
+    export PORT=5000
+    node server.js
+    
+    # Windows Command Prompt
+    set PORT=5000
+    node server.js
+    
+    # Windows PowerShell
+    $env:PORT=5000
+    node server.js
+    ```
+  </Tab>
+  
+  <Tab title="Using .env File">
+    Install dotenv:
+    ```bash
+    npm install dotenv
+    ```
+    
+    Update `server.js`:
+    ```javascript server.js
+    require('dotenv').config();
+    const express = require('express');
+    // ... rest of imports
+    
+    const PORT = process.env.PORT || 4000;
+    ```
+    
+    Create `.env` file:
+    ```bash .env
+    PORT=5000
+    ```
+    
+    Add `.env` to `.gitignore`:
+    ```gitignore .gitignore
+    node_modules/
+    .env
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Ensure the port you choose is not already in use by another application. Common ports to avoid: 3000 (React default), 3306 (MySQL), 8080 (common HTTP alternate).
+</Warning>
+
+## CORS Configuration
+
+Cross-Origin Resource Sharing (CORS) is enabled to allow the frontend to communicate with the backend.
+
+### Current CORS Setup
+
+```javascript server.js:7,18
+const cors = require("cors");
+// ...
+app.use(cors());
+```
+
+This enables CORS for **all origins** - suitable for development but should be restricted in production.
+
+### Production CORS Configuration
+
+For production, restrict CORS to specific origins:
+
+<CodeGroup>
+  ```javascript Single Origin
+  const cors = require("cors");
+  
+  const corsOptions = {
+    origin: 'https://yourhotel.com',
+    optionsSuccessStatus: 200
+  };
+  
+  app.use(cors(corsOptions));
+  ```
+  
+  ```javascript Multiple Origins
+  const cors = require("cors");
+  
+  const allowedOrigins = [
+    'https://yourhotel.com',
+    'https://www.yourhotel.com',
+    'https://admin.yourhotel.com'
+  ];
+  
+  const corsOptions = {
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    optionsSuccessStatus: 200
+  };
+  
+  app.use(cors(corsOptions));
+  ```
+  
+  ```javascript Environment-Based
+  const cors = require("cors");
+  
+  const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+      ? 'https://yourhotel.com'
+      : '*',
+    credentials: true,
+    optionsSuccessStatus: 200
+  };
+  
+  app.use(cors(corsOptions));
+  ```
+  
+  ```javascript Advanced Configuration
+  const cors = require("cors");
+  
+  const corsOptions = {
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400 // 24 hours
+  };
+  
+  app.use(cors(corsOptions));
+  ```
+</CodeGroup>
+
+<Tip>
+  Use environment variables for CORS origins:
+  ```bash .env
+  ALLOWED_ORIGINS=https://yourhotel.com,https://www.yourhotel.com
+  ```
+</Tip>
+
+## Body Parser Configuration
+
+The application uses body-parser to parse JSON request bodies.
+
+### Current Setup
+
+```javascript server.js:3,19
+const bodyParser = require('body-parser');
+// ...
+app.use(bodyParser.json());
+```
+
+### Advanced Body Parser Configuration
+
+<CodeGroup>
+  ```javascript Size Limits
+  // Increase JSON payload size limit (default: 100kb)
+  app.use(bodyParser.json({ limit: '50mb' }));
+  
+  // Also handle URL-encoded data
+  app.use(bodyParser.urlencoded({ 
+    extended: true,
+    limit: '50mb'
+  }));
+  ```
+  
+  ```javascript Custom Error Handling
+  app.use(bodyParser.json());
+  
+  // Handle body parser errors
+  app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+      return res.status(400).json({ 
+        message: 'Invalid JSON payload' 
+      });
+    }
+    next();
+  });
+  ```
+  
+  ```javascript Type Verification
+  app.use(bodyParser.json({
+    verify: (req, res, buf) => {
+      try {
+        JSON.parse(buf);
+      } catch(e) {
+        throw new Error('Invalid JSON');
+      }
+    }
+  }));
+  ```
+</CodeGroup>
+
+<Note>
+  Express 4.16+ includes body parser functionality. You can replace `body-parser` with:
+  ```javascript
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  ```
+</Note>
+
+## Database Configuration
+
+Database settings are configured in `model/database.js`.
+
+### Current Configuration
+
+```javascript model/database.js
+const mysql = require('mysql2');
+
+const conexion = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '1234',
+    database: 'BDReservacion'
+})
+
+conexion.connect((err) =>{
+    if (err) throw err;
+    console.log("Conexion exitosa a la base de datos")
+})
+
+module.exports = conexion;
+```
+
+### Environment-Based Database Configuration
+
+Create a more flexible configuration:
+
+```javascript model/database.js
+const mysql = require('mysql2');
+
+// Load environment variables
+require('dotenv').config();
+
+const conexion = mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_NAME || 'BDReservacion',
+    connectionLimit: 10,
+    waitForConnections: true,
+    queueLimit: 0
+});
+
+conexion.connect((err) => {
+    if (err) {
+        console.error('Database connection failed:', err);
+        throw err;
+    }
+    console.log(`Conexion exitosa a la base de datos: ${process.env.DB_NAME || 'BDReservacion'}`);
+});
+
+// Handle connection errors
+conexion.on('error', (err) => {
+    console.error('Database error:', err);
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+        console.error('Database connection was closed.');
+    }
+    if (err.code === 'ER_CON_COUNT_ERROR') {
+        console.error('Database has too many connections.');
+    }
+    if (err.code === 'ECONNREFUSED') {
+        console.error('Database connection was refused.');
+    }
+});
+
+module.exports = conexion;
+```
+
+### Environment Variables for Database
+
+Create a `.env` file:
+
+```bash .env
+# Server Configuration
+PORT=4000
+NODE_ENV=development
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_secure_password
+DB_NAME=BDReservacion
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:5500
+```
+
+<Warning>
+  Never commit `.env` files to version control. Add `.env` to your `.gitignore` file.
+</Warning>
+
+## Connection Pooling
+
+For better performance, use connection pooling instead of single connections:
+
+```javascript model/database.js
+const mysql = require('mysql2');
+require('dotenv').config();
+
+// Create connection pool
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_NAME || 'BDReservacion',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
+});
+
+// Test the connection
+pool.getConnection((err, connection) => {
+    if (err) {
+        console.error('Error getting connection from pool:', err);
+        throw err;
+    }
+    console.log('Conexion exitosa a la base de datos (pool)');
+    connection.release();
+});
+
+// Export pool for promise-based queries
+module.exports = pool.promise();
+```
+
+**Benefits of connection pooling:**
+- Better performance under load
+- Automatic connection management
+- Connection reuse
+- Built-in error handling
+
+<Tip>
+  Update controllers to use the pool:
+  ```javascript
+  // Old way
+  conexion.query(SQL, (err, results) => {...});
+  
+  // New way with promises
+  const [results] = await conexion.query(SQL);
+  ```
+</Tip>
+
+## Logging Configuration
+
+Add logging for better debugging and monitoring:
+
+### Basic Logging Middleware
+
+```javascript server.js
+// Add after imports, before middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+```
+
+### Morgan Logger (Recommended)
+
+Install Morgan:
+```bash
+npm install morgan
+```
+
+Add to `server.js`:
+```javascript server.js
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require("cors");
+const morgan = require('morgan');
+
+const app = express();
+
+// Logging middleware
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+} else {
+    app.use(morgan('combined'));
+}
+
+// Rest of configuration...
+```
+
+**Morgan formats:**
+- `dev` - Colored output for development
+- `combined` - Apache standard combined format
+- `common` - Apache standard common format
+- `tiny` - Minimal output
+
+### File-Based Logging
+
+```javascript server.js
+const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir);
+}
+
+// Create write stream for access log
+const accessLogStream = fs.createWriteStream(
+    path.join(logsDir, 'access.log'),
+    { flags: 'a' }
+);
+
+// Setup logger
+app.use(morgan('combined', { stream: accessLogStream }));
+app.use(morgan('dev')); // Also log to console
+```
+
+## Error Handling Configuration
+
+Add comprehensive error handling:
+
+```javascript server.js
+// Add after all routes, before app.listen()
+
+// 404 handler
+app.use((req, res, next) => {
+    res.status(404).json({
+        message: 'Endpoint not found',
+        path: req.url
+    });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    
+    // Database errors
+    if (err.code && err.code.startsWith('ER_')) {
+        return res.status(500).json({
+            message: 'Database error',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+    }
+    
+    // Default error
+    res.status(err.status || 500).json({
+        message: err.message || 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? err : undefined
+    });
+});
+```
+
+## Security Configuration
+
+### Helmet for Security Headers
+
+Install Helmet:
+```bash
+npm install helmet
+```
+
+Add to `server.js`:
+```javascript server.js
+const helmet = require('helmet');
+
+// Add after creating app
+app.use(helmet());
+```
+
+Helmet sets various HTTP headers for security:
+- Content Security Policy
+- X-Frame-Options
+- Strict-Transport-Security
+- X-Content-Type-Options
+- And more...
+
+### Rate Limiting
+
+Install express-rate-limit:
+```bash
+npm install express-rate-limit
+```
+
+Add rate limiting:
+```javascript server.js
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+
+// Apply to all routes
+app.use(limiter);
+
+// Or apply to specific routes
+app.use('/clientes', limiter, clientesRouter);
+```
+
+### Input Validation
+
+Install express-validator:
+```bash
+npm install express-validator
+```
+
+Example validation in a controller:
+```javascript controllers/clientes.controllers.js
+const { body, validationResult } = require('express-validator');
+
+exports.addDataCliente = [
+    // Validation rules
+    body('nombre').notEmpty().trim().isLength({ min: 2, max: 255 }),
+    body('correo').isEmail().normalizeEmail(),
+    body('telefono').notEmpty().matches(/^[0-9-]+$/),
+    
+    // Handler
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        
+        const { nombre, correo, telefono } = req.body;
+        const SQL = "INSERT INTO `cliente` (nombre, correo, telefono) VALUES (?, ?, ?)";
+        conexion.query(SQL, [nombre, correo, telefono], (err, results) => {
+            if (err) throw err;
+            res.json({ message: "Cliente agregado" });
+        });
+    }
+];
+```
+
+## Complete Production Configuration
+
+Here's a complete production-ready `server.js`:
+
+```javascript server.js
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+
+const clientesRouter = require('./router/clientes.Router');
+const habitacionRouter = require('./router/habitaciones.Router');
+const reservacionRouter = require('./router/reservaciones.Router');
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+const corsOptions = {
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// Logging
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Body parsing
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100
+});
+app.use(limiter);
+
+// Routes
+app.use('/clientes', clientesRouter);
+app.use('/habitaciones', habitacionRouter);
+app.use('/reservaciones', reservacionRouter);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ message: 'Endpoint not found' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(err.status || 500).json({
+        message: err.message || 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`Servidor iniciado en el puerto ${PORT}`);
+    console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
+});
+
+module.exports = app;
+```
+
+## Configuration Checklist
+
+<Steps>
+  <Step title="Environment Variables">
+    - [ ] Create `.env` file
+    - [ ] Set PORT
+    - [ ] Configure database credentials
+    - [ ] Set ALLOWED_ORIGINS
+    - [ ] Add `.env` to `.gitignore`
+  </Step>
+
+  <Step title="Security">
+    - [ ] Install and configure helmet
+    - [ ] Set up rate limiting
+    - [ ] Restrict CORS origins for production
+    - [ ] Use connection pooling
+    - [ ] Add input validation
+  </Step>
+
+  <Step title="Logging">
+    - [ ] Install morgan
+    - [ ] Configure log format
+    - [ ] Set up file logging for production
+    - [ ] Add error logging
+  </Step>
+
+  <Step title="Error Handling">
+    - [ ] Add 404 handler
+    - [ ] Add global error handler
+    - [ ] Handle database errors
+    - [ ] Log errors appropriately
+  </Step>
+
+  <Step title="Testing">
+    - [ ] Test all endpoints
+    - [ ] Verify CORS configuration
+    - [ ] Test rate limiting
+    - [ ] Check error responses
+  </Step>
+</Steps>
+
+## Environment Configurations
+
+<CardGroup cols={2}>
+  <Card title="Development" icon="laptop-code">
+    - PORT: 4000
+    - CORS: Allow all origins
+    - Logging: Detailed (morgan 'dev')
+    - Error details: Full stack traces
+    - Rate limiting: Generous
+  </Card>
+  
+  <Card title="Production" icon="server">
+    - PORT: From environment
+    - CORS: Specific origins only
+    - Logging: File-based (morgan 'combined')
+    - Error details: Minimal
+    - Rate limiting: Strict
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Learn about available endpoints and usage
+  </Card>
+  
+  <Card title="User Guide" icon="book" href="/guides/clients">
+    Explore client, room, and reservation management
+  </Card>
+</CardGroup>
+
+<Tip>
+  Always test configuration changes in a development environment before deploying to production.
+</Tip>

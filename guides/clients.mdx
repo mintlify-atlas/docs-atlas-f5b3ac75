@@ -1,0 +1,566 @@
+---
+title: Client Management
+description: Complete guide to managing hotel clients with CRUD operations
+icon: users
+---
+
+## Overview
+
+The Client Management module allows you to create, read, update, and delete client information in the Hotel Reservation System. This guide covers all client operations with real code examples from the application.
+
+<Note>
+  Client data includes name, email, and phone number. All operations use the REST API endpoint `http://localhost:4000/clientes`.
+</Note>
+
+## Client Data Structure
+
+Each client record contains the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | Integer | Auto-generated unique identifier |
+| `nombre` | String | Client's full name |
+| `correo` | String | Client's email address |
+| `telefono` | String | Client's phone number |
+
+## Getting Started
+
+<Steps>
+
+### Step 1: Access the Client Management Page
+
+Navigate to the client management interface at `index.html`. The page displays a table of all registered clients with action buttons for each entry.
+
+### Step 2: Understanding the UI Components
+
+The interface includes:
+- A data table showing all clients
+- A "Nuevo Cliente" (New Client) button to add clients
+- "Actualizar" (Update) and "Eliminar" (Delete) buttons for each client
+- Modal dialogs for creating and updating client information
+
+### Step 3: Initialize the API Connection
+
+The frontend connects to the backend API using the following configuration:
+
+```javascript
+const URL = 'http://localhost:4000/clientes';
+let data = null;
+```
+
+</Steps>
+
+## CRUD Operations
+
+### Reading Client Data
+
+The application automatically loads all clients when the page loads using the `loadDataCliente()` function.
+
+#### Loading All Clients
+
+```javascript
+async function loadDataCliente() {
+    try {
+        const response = await fetch(URL);
+        data = await response.json();
+
+        let html = '';
+        data.forEach(cliente => {
+            html += `
+            <tr>
+                <td>${cliente.id}</td>
+                <td>${cliente.nombre}</td>
+                <td>${cliente.correo}</td>
+                <td>${cliente.telefono}</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="modificarDataCliente(${cliente.id})">Actualizar</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteDataCliente(${cliente.id})">Eliminar</button>
+                </td>
+            </tr>`;
+        });
+
+        T_DATA_CLIENTE.innerHTML = html;
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+**Key Points:**
+- Uses `fetch()` with GET method (default)
+- Parses JSON response
+- Dynamically generates table rows
+- Includes action buttons with client ID
+
+#### Backend Controller
+
+The backend retrieves clients from the MySQL database:
+
+```javascript
+exports.obtenerListClientesService = (req, res) => {
+    const SQL = "SELECT * FROM `cliente`";
+    conexion.query(SQL, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+<Note>
+  The function executes a SELECT query and returns all client records as JSON.
+</Note>
+
+### Creating New Clients
+
+<Tabs>
+  <Tab title="Frontend">
+    To add a new client, use the `guardarDataCliente()` function:
+
+    ```javascript
+    async function guardarDataCliente() {
+        const dataCliente = {
+            nombre: document.getElementById("clientName").value,
+            correo: document.getElementById("clientEmail").value,
+            telefono: document.getElementById("clientPhone").value
+        };
+
+        try {
+            const response = await fetch(URL, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataCliente)
+            });
+
+            if (!response.ok) throw new Error('Error al guardar cliente');
+
+            loadDataCliente();
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    ```
+
+    **Process:**
+    1. Extract form values from input fields
+    2. Create a data object with client information
+    3. Send POST request with JSON body
+    4. Reload the client list on success
+  </Tab>
+
+  <Tab title="Backend">
+    The backend controller handles client creation:
+
+    ```javascript
+    exports.addDataCliente = (req, res) => {
+        const { nombre, correo, telefono } = req.body;
+        const SQL = "INSERT INTO `cliente` (nombre, correo, telefono) VALUES (?, ?, ?)";
+        conexion.query(SQL, [nombre, correo, telefono], (err, results) => {
+            if (err) throw err;
+            res.json({ message: "Cliente agregado" });
+        });
+    };
+    ```
+
+    **Process:**
+    1. Destructure data from request body
+    2. Execute parameterized INSERT query
+    3. Return success message as JSON
+  </Tab>
+
+  <Tab title="HTML Form">
+    The client creation form in `index.html`:
+
+    ```html
+    <div class="modal fade" id="formData" tabindex="-1" aria-labelledby="formDataLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="formDataLabel">Nuevo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="clientName" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="clientName" placeholder="Ingrese el nombre">
+                        </div>
+                        <div class="mb-3">
+                            <label for="clientEmail" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="clientEmail" placeholder="Ingrese el correo">
+                        </div>
+                        <div class="mb-3">
+                            <label for="clientPhone" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="clientPhone" placeholder="Ingrese el teléfono">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarDataCliente()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+### Updating Existing Clients
+
+Updating a client is a two-step process: opening the update dialog and submitting the changes.
+
+#### Opening the Update Dialog
+
+```javascript
+function modificarDataCliente(id) {
+    const dataCliente = data.find(cliente => cliente.id === id);
+    document.getElementById("clientNameU").value = dataCliente.nombre;
+    document.getElementById("clientEmailU").value = dataCliente.correo;
+    document.getElementById("clientPhoneU").value = dataCliente.telefono;
+
+    const dialog = document.getElementById("formDataCliente");
+    dialog.dataset.clienteId = id;
+    dialog.showModal();
+}
+```
+
+**Key Points:**
+- Finds the client by ID in the local data array
+- Pre-fills the update form with current values
+- Stores the client ID in the dialog's dataset
+- Opens the native HTML `<dialog>` element
+
+#### Submitting Updates
+
+```javascript
+async function actualizarDataCliente() {
+    const dialog = document.getElementById("formDataCliente");
+    const id = dialog.dataset.clienteId;
+
+    const dataCliente = {
+        nombre: document.getElementById("clientNameU").value,
+        correo: document.getElementById("clientEmailU").value,
+        telefono: document.getElementById("clientPhoneU").value
+    };
+
+    try {
+        const response = await fetch(`${URL}/${id}`, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataCliente)
+        });
+
+        if (!response.ok) throw new Error('Error al actualizar cliente');
+
+        dialog.close();
+        loadDataCliente();
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+<Warning>
+  Always validate that the client ID exists before sending an update request to avoid errors.
+</Warning>
+
+#### Backend Update Handler
+
+```javascript
+exports.updateDataCliente = (req, res) => {
+    const id = req.params.id;
+    const { nombre, correo, telefono } = req.body;
+    const SQL = "UPDATE `cliente` SET nombre=?, correo=?, telefono=? WHERE id=?";
+    conexion.query(SQL, [nombre, correo, telefono, id], (err, results) => {
+        if (err) throw err;
+        res.json({ message: "Cliente actualizado" });
+    });
+};
+```
+
+**API Route:** `PUT /clientes/:id`
+
+### Deleting Clients
+
+Deleting a client removes the record permanently from the database.
+
+```javascript
+async function deleteDataCliente(id) {
+    try {
+        const response = await fetch(`${URL}/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error('Error al eliminar cliente');
+
+        loadDataCliente();
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+```
+
+<Warning>
+  This operation is irreversible. Consider adding a confirmation dialog before deleting clients in production.
+</Warning>
+
+#### Backend Delete Handler
+
+```javascript
+exports.deleteDataCliente = (req, res) => {
+    const id = req.params.id;
+    const SQL = "DELETE FROM `cliente` WHERE id=?";
+    conexion.query(SQL, id, (err, results) => {
+        if (err) throw err;
+        res.json({ message: "Cliente eliminado" });
+    });
+};
+```
+
+**API Route:** `DELETE /clientes/:id`
+
+## API Reference
+
+### Endpoints
+
+<CardGroup cols={2}>
+  <Card title="GET /clientes" icon="list">
+    Retrieve all clients
+    
+    **Response:**
+    ```json
+    [
+      {
+        "id": 1,
+        "nombre": "Juan Pérez",
+        "correo": "juan@example.com",
+        "telefono": "555-0123"
+      }
+    ]
+    ```
+  </Card>
+
+  <Card title="POST /clientes" icon="plus">
+    Create a new client
+    
+    **Request Body:**
+    ```json
+    {
+      "nombre": "María García",
+      "correo": "maria@example.com",
+      "telefono": "555-0456"
+    }
+    ```
+  </Card>
+
+  <Card title="PUT /clientes/:id" icon="pen">
+    Update an existing client
+    
+    **Request Body:**
+    ```json
+    {
+      "nombre": "Juan Pérez Updated",
+      "correo": "juan.updated@example.com",
+      "telefono": "555-9999"
+    }
+    ```
+  </Card>
+
+  <Card title="DELETE /clientes/:id" icon="trash">
+    Delete a client
+    
+    **Response:**
+    ```json
+    {
+      "message": "Cliente eliminado"
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Accordion title="Input Validation">
+  Always validate user input before submitting:
+  
+  ```javascript
+  function validateClientData(nombre, correo, telefono) {
+      if (!nombre || nombre.trim() === '') {
+          alert('El nombre es requerido');
+          return false;
+      }
+      
+      if (!correo || !correo.includes('@')) {
+          alert('Ingrese un correo válido');
+          return false;
+      }
+      
+      if (!telefono || telefono.length < 7) {
+          alert('Ingrese un teléfono válido');
+          return false;
+      }
+      
+      return true;
+  }
+  ```
+</Accordion>
+
+<Accordion title="Error Handling">
+  Implement robust error handling for better user experience:
+  
+  ```javascript
+  async function guardarDataClienteWithErrorHandling() {
+      const dataCliente = {
+          nombre: document.getElementById("clientName").value,
+          correo: document.getElementById("clientEmail").value,
+          telefono: document.getElementById("clientPhone").value
+      };
+      
+      // Validate before sending
+      if (!validateClientData(dataCliente.nombre, dataCliente.correo, dataCliente.telefono)) {
+          return;
+      }
+
+      try {
+          const response = await fetch(URL, {
+              method: "POST",
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dataCliente)
+          });
+
+          if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.message || 'Error al guardar cliente');
+          }
+
+          alert('Cliente guardado exitosamente');
+          loadDataCliente();
+          
+          // Clear form
+          document.getElementById("clientName").value = '';
+          document.getElementById("clientEmail").value = '';
+          document.getElementById("clientPhone").value = '';
+
+      } catch (error) {
+          console.error('Error:', error);
+          alert(`Error: ${error.message}`);
+      }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Loading States">
+  Show loading indicators during async operations:
+  
+  ```javascript
+  async function loadDataClienteWithLoading() {
+      const table = document.getElementById("tDataCliente");
+      table.innerHTML = '<tr><td colspan="5" class="text-center">Cargando...</td></tr>';
+      
+      try {
+          const response = await fetch(URL);
+          data = await response.json();
+
+          let html = '';
+          data.forEach(cliente => {
+              html += `
+              <tr>
+                  <td>${cliente.id}</td>
+                  <td>${cliente.nombre}</td>
+                  <td>${cliente.correo}</td>
+                  <td>${cliente.telefono}</td>
+                  <td>
+                      <button type="button" class="btn btn-primary btn-sm" onclick="modificarDataCliente(${cliente.id})">Actualizar</button>
+                      <button type="button" class="btn btn-danger btn-sm" onclick="deleteDataCliente(${cliente.id})">Eliminar</button>
+                  </td>
+              </tr>`;
+          });
+
+          table.innerHTML = html;
+
+      } catch (error) {
+          console.error(error);
+          table.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar datos</td></tr>';
+      }
+  }
+  ```
+</Accordion>
+
+## Complete Workflow Example
+
+Here's a complete example of the client management workflow:
+
+<Steps>
+
+### Step 1: User Opens the Page
+
+```javascript
+// Automatically executed on page load
+loadDataCliente();
+```
+
+### Step 2: User Clicks "Nuevo Cliente"
+
+Bootstrap modal opens showing the client creation form.
+
+### Step 3: User Fills the Form
+
+- Nombre: "Carlos Rodríguez"
+- Correo: "carlos@hotel.com"
+- Teléfono: "555-7890"
+
+### Step 4: User Clicks "Guardar"
+
+```javascript
+guardarDataCliente();
+// Sends POST request to http://localhost:4000/clientes
+```
+
+### Step 5: Backend Processes Request
+
+```javascript
+// INSERT INTO cliente (nombre, correo, telefono) VALUES (?, ?, ?)
+```
+
+### Step 6: Frontend Refreshes Data
+
+```javascript
+loadDataCliente();
+// Fetches updated list and re-renders table
+```
+
+</Steps>
+
+## Database Schema
+
+The `cliente` table structure:
+
+```sql
+CREATE TABLE `cliente` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(255) NOT NULL,
+  `correo` VARCHAR(255) NOT NULL,
+  `telefono` VARCHAR(50) NOT NULL
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Room Management" icon="bed" href="/guides/rooms">
+    Learn how to manage hotel rooms
+  </Card>
+  
+  <Card title="Reservations" icon="calendar" href="/guides/reservations">
+    Create and manage reservations
+  </Card>
+  
+  <Card title="Frontend Integration" icon="code" href="/guides/frontend-integration">
+    Deep dive into API integration
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/guides/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>

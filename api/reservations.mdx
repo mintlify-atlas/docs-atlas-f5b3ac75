@@ -1,0 +1,656 @@
+---
+title: Reservation Endpoints
+description: API endpoints for managing hotel reservations and bookings
+---
+
+## Overview
+
+The Reservations API provides CRUD operations for managing hotel bookings. All endpoints are defined in `router/reservaciones.Router.js:1-12` and implemented in `controllers/reservaciones.controllers.js:1-55`.
+
+<Info>
+  Base URL: `http://localhost:4000`
+</Info>
+
+## Endpoints Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/reservaciones` | Get all reservations |
+| POST | `/reservaciones` | Create a new reservation |
+| PUT | `/reservaciones/:id` | Update a reservation |
+| DELETE | `/reservaciones/:id` | Delete a reservation |
+
+## Database Schema
+
+The `reservaciones` table has the following structure:
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT |
+| `folio` | VARCHAR | NOT NULL |
+| `nombrecliente` | VARCHAR | NOT NULL |
+
+<Note>
+  The current schema is simplified. For production, consider adding fields like `fecha_inicio`, `fecha_fin`, `habitacion_id`, `cliente_id`, and `estado`.
+</Note>
+
+---
+
+## Get All Reservations
+
+<CodeGroup>
+```http Request
+GET /reservaciones
+```
+
+```bash curl
+curl http://localhost:4000/reservaciones
+```
+
+```javascript fetch
+fetch('http://localhost:4000/reservaciones')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+const axios = require('axios');
+
+axios.get('http://localhost:4000/reservaciones')
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="response" type="array">
+  Array of reservation objects
+  
+  <Expandable title="Reservation Object">
+    <ResponseField name="id" type="integer">
+      Unique reservation identifier
+    </ResponseField>
+    <ResponseField name="folio" type="string">
+      Reservation folio number (unique identifier for tracking)
+    </ResponseField>
+    <ResponseField name="nombrecliente" type="string">
+      Name of the client making the reservation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json 200 OK
+[
+  {
+    "id": 1,
+    "folio": "RES-2024-001",
+    "nombrecliente": "John Doe"
+  },
+  {
+    "id": 2,
+    "folio": "RES-2024-002",
+    "nombrecliente": "Jane Smith"
+  }
+]
+```
+
+### Implementation
+
+From `controllers/reservaciones.controllers.js:4-10`:
+
+```javascript reservaciones.controllers.js
+exports.obtenerListReservacionesService = (req, res) => {
+    const SQL = "SELECT * FROM `reservaciones`";
+    conexion.query(SQL, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+---
+
+## Create Reservation
+
+<CodeGroup>
+```http Request
+POST /reservaciones
+Content-Type: application/json
+
+{
+  "folio": "RES-2024-001",
+  "nombrecliente": "John Doe"
+}
+```
+
+```bash curl
+curl -X POST http://localhost:4000/reservaciones \
+  -H "Content-Type: application/json" \
+  -d '{
+    "folio": "RES-2024-001",
+    "nombrecliente": "John Doe"
+  }'
+```
+
+```javascript fetch
+fetch('http://localhost:4000/reservaciones', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    folio: 'RES-2024-001',
+    nombrecliente: 'John Doe'
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.post('http://localhost:4000/reservaciones', {
+  folio: 'RES-2024-001',
+  nombrecliente: 'John Doe'
+})
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="folio" type="string" required>
+  Unique reservation folio number. Common format: `RES-YYYY-XXX`
+</ParamField>
+
+<ParamField body="nombrecliente" type="string" required>
+  Full name of the client making the reservation
+</ParamField>
+
+### Response
+
+<Tabs>
+  <Tab title="Success">
+    ```json 200 OK
+    {
+      "message": "Reservación agregada correctamente"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Error">
+    ```json 500 Internal Server Error
+    {
+      "message": "Error al guardar reservación"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Implementation
+
+From `controllers/reservaciones.controllers.js:13-24`:
+
+```javascript reservaciones.controllers.js
+exports.addDataReservaciones = (req, res) => {
+    const { folio, nombrecliente } = req.body;
+    const SQL = "INSERT INTO `reservaciones` (folio, nombrecliente) VALUES (?, ?)";
+    conexion.query(SQL, [folio, nombrecliente], (err, results) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ message: "Error al guardar reservación" });
+        } else {
+            res.json({ message: "Reservación agregada correctamente" });
+        }
+    });
+};
+```
+
+<Note>
+  This endpoint includes basic error handling with a 500 status code on database errors.
+</Note>
+
+---
+
+## Update Reservation
+
+<CodeGroup>
+```http Request
+PUT /reservaciones/:id
+Content-Type: application/json
+
+{
+  "folio": "RES-2024-001-UPD",
+  "nombrecliente": "John Doe Updated"
+}
+```
+
+```bash curl
+curl -X PUT http://localhost:4000/reservaciones/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "folio": "RES-2024-001-UPD",
+    "nombrecliente": "John Doe Updated"
+  }'
+```
+
+```javascript fetch
+const reservationId = 1;
+
+fetch(`http://localhost:4000/reservaciones/${reservationId}`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    folio: 'RES-2024-001-UPD',
+    nombrecliente: 'John Doe Updated'
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.put('http://localhost:4000/reservaciones/1', {
+  folio: 'RES-2024-001-UPD',
+  nombrecliente: 'John Doe Updated'
+})
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the reservation to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="folio" type="string" required>
+  Updated reservation folio number
+</ParamField>
+
+<ParamField body="nombrecliente" type="string" required>
+  Updated client name
+</ParamField>
+
+### Response
+
+<Tabs>
+  <Tab title="Success">
+    ```json 200 OK
+    {
+      "message": "Reservación actualizada correctamente"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Not Found">
+    ```json 404 Not Found
+    {
+      "message": "Reservación no encontrada"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Implementation
+
+From `controllers/reservaciones.controllers.js:28-40`:
+
+```javascript reservaciones.controllers.js
+exports.updateDataReservaciones = (req, res) => {
+    const id = req.params.id;
+    const { folio, nombrecliente } = req.body;
+    const SQL = "UPDATE `reservaciones` SET folio=?, nombrecliente=? WHERE id=?";
+    conexion.query(SQL, [folio, nombrecliente, id], (err, results) => {
+        if (err) throw err;
+        if (results.affectedRows === 0) {
+            res.status(404).json({ message: "Reservación no encontrada" });
+        } else {
+            res.json({ message: "Reservación actualizada correctamente" });
+        }
+    });
+};
+```
+
+<Tip>
+  This endpoint checks if the reservation exists by examining `affectedRows`, providing better error feedback than other endpoints.
+</Tip>
+
+---
+
+## Delete Reservation
+
+<CodeGroup>
+```http Request
+DELETE /reservaciones/:id
+```
+
+```bash curl
+curl -X DELETE http://localhost:4000/reservaciones/1
+```
+
+```javascript fetch
+const reservationId = 1;
+
+fetch(`http://localhost:4000/reservaciones/${reservationId}`, {
+  method: 'DELETE'
+})
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+
+```javascript axios
+axios.delete('http://localhost:4000/reservaciones/1')
+  .then(response => console.log(response.data))
+  .catch(error => console.error('Error:', error));
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the reservation to delete
+</ParamField>
+
+### Response
+
+<Tabs>
+  <Tab title="Success">
+    ```json 200 OK
+    {
+      "message": "Reservación eliminada correctamente"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Not Found">
+    ```json 404 Not Found
+    {
+      "message": "Reservación no encontrada"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Implementation
+
+From `controllers/reservaciones.controllers.js:43-54`:
+
+```javascript reservaciones.controllers.js
+exports.deleteDataReservaciones = (req, res) => {
+    const id = req.params.id;
+    const SQL = "DELETE FROM `reservaciones` WHERE id=?";
+    conexion.query(SQL, id, (err, results) => {
+        if (err) throw err;
+        if (results.affectedRows === 0) {
+            res.status(404).json({ message: "Reservación no encontrada" });
+        } else {
+            res.json({ message: "Reservación eliminada correctamente" });
+        }
+    });
+};
+```
+
+---
+
+## Folio Generation
+
+Folio numbers are unique identifiers for reservations. Here's a recommended pattern:
+
+```javascript Folio Generator
+function generateFolio() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const timestamp = Date.now().toString().slice(-4);
+  
+  return `RES-${year}${month}${day}-${timestamp}`;
+}
+
+// Example output: RES-20240315-7892
+const folio = generateFolio();
+console.log(folio);
+```
+
+## Complete Reservation Workflow
+
+```javascript Reservation Management
+const API_URL = 'http://localhost:4000/reservaciones';
+
+// Generate unique folio
+function generateFolio() {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `RES-${timestamp}-${random}`;
+}
+
+// Create a new reservation
+async function createReservation(clientName) {
+  const folio = generateFolio();
+  
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      folio: folio,
+      nombrecliente: clientName
+    })
+  });
+  
+  const data = await response.json();
+  console.log('Reservation created:', data);
+  return folio;
+}
+
+// Find reservation by folio
+async function findReservationByFolio(folio) {
+  const response = await fetch(API_URL);
+  const reservations = await response.json();
+  return reservations.find(r => r.folio === folio);
+}
+
+// Update reservation client name
+async function updateReservationClient(reservationId, newClientName) {
+  // Get current reservation
+  const response = await fetch(API_URL);
+  const reservations = await response.json();
+  const reservation = reservations.find(r => r.id === reservationId);
+  
+  if (!reservation) {
+    console.error('Reservation not found');
+    return;
+  }
+  
+  // Update with new client name
+  await fetch(`${API_URL}/${reservationId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      folio: reservation.folio,
+      nombrecliente: newClientName
+    })
+  });
+  
+  console.log('Reservation updated');
+}
+
+// Cancel reservation
+async function cancelReservation(reservationId) {
+  const response = await fetch(`${API_URL}/${reservationId}`, {
+    method: 'DELETE'
+  });
+  
+  const data = await response.json();
+  console.log('Reservation cancelled:', data);
+}
+
+// Usage
+(async () => {
+  const folio = await createReservation('Alice Johnson');
+  const reservation = await findReservationByFolio(folio);
+  console.log('Found reservation:', reservation);
+  
+  if (reservation) {
+    await updateReservationClient(reservation.id, 'Alice Johnson-Smith');
+    // await cancelReservation(reservation.id);
+  }
+})();
+```
+
+## Enhanced Schema Recommendation
+
+For a production-ready reservation system, consider this enhanced schema:
+
+```sql Enhanced Schema
+CREATE TABLE `reservaciones` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `folio` VARCHAR(50) UNIQUE NOT NULL,
+  `cliente_id` INT,
+  `habitacion_id` INT,
+  `fecha_inicio` DATE NOT NULL,
+  `fecha_fin` DATE NOT NULL,
+  `numero_huespedes` INT DEFAULT 1,
+  `estado` ENUM('pendiente', 'confirmada', 'cancelada', 'completada') DEFAULT 'pendiente',
+  `precio_total` DECIMAL(10, 2),
+  `notas` TEXT,
+  `creado_en` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`cliente_id`) REFERENCES `cliente`(`id`),
+  FOREIGN KEY (`habitacion_id`) REFERENCES `habitaciones`(`id`)
+);
+```
+
+With this schema, you could implement:
+- Date range validation
+- Room availability checking
+- Automatic price calculation
+- Reservation status tracking
+- Guest count management
+
+## Validation Best Practices
+
+```javascript Enhanced Validation
+const { body, validationResult } = require('express-validator');
+
+router.post('/reservaciones', [
+  body('folio')
+    .trim()
+    .matches(/^RES-[0-9]+-[0-9]+$/)
+    .withMessage('Folio debe tener formato RES-XXXXXXXX-XXX'),
+  body('nombrecliente')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Nombre de cliente debe tener entre 2 y 100 caracteres')
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  service.addDataReservaciones(req, res);
+});
+```
+
+## Integration Example
+
+Combine clients, rooms, and reservations:
+
+```javascript Full Booking Flow
+class HotelBookingSystem {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+  }
+  
+  async createCompleteReservation(clientData, roomType) {
+    // 1. Create or find client
+    const client = await this.createClient(clientData);
+    
+    // 2. Find available room
+    const room = await this.findAvailableRoom(roomType);
+    
+    if (!room) {
+      throw new Error('No rooms available of type: ' + roomType);
+    }
+    
+    // 3. Create reservation
+    const folio = this.generateFolio();
+    const reservation = await this.createReservation({
+      folio: folio,
+      nombrecliente: client.nombre
+    });
+    
+    return {
+      client,
+      room,
+      reservation,
+      folio
+    };
+  }
+  
+  async createClient(data) {
+    const response = await fetch(`${this.baseURL}/clientes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  }
+  
+  async findAvailableRoom(tipo) {
+    const response = await fetch(`${this.baseURL}/habitaciones`);
+    const rooms = await response.json();
+    return rooms.find(r => r.tipo === tipo);
+  }
+  
+  async createReservation(data) {
+    const response = await fetch(`${this.baseURL}/reservaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  }
+  
+  generateFolio() {
+    return `RES-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  }
+}
+
+// Usage
+const hotel = new HotelBookingSystem('http://localhost:4000');
+
+hotel.createCompleteReservation(
+  {
+    nombre: 'Carlos Mendez',
+    correo: 'carlos@example.com',
+    telefono: '555-0177'
+  },
+  'Suite'
+).then(booking => {
+  console.log('Booking complete:', booking);
+  console.log('Folio:', booking.folio);
+});
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Client Endpoints" icon="users" href="/api/clients">
+    Manage guest information
+  </Card>
+  <Card title="Room Endpoints" icon="bed" href="/api/rooms">
+    Check room availability
+  </Card>
+</CardGroup>

@@ -1,0 +1,720 @@
+---
+title: 'Installation'
+description: 'Complete installation guide for the Hotel Reservation System'
+icon: 'download'
+---
+
+## System Requirements
+
+Before installing the Hotel Reservation System, ensure your development environment meets these requirements:
+
+### Software Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    **Version:** 14.x or higher
+    
+    **Recommended:** 18.x LTS
+    
+    Required for running the Express server and managing dependencies.
+  </Card>
+  
+  <Card title="MySQL" icon="database">
+    **Version:** 5.7 or higher
+    
+    **Recommended:** 8.0 or higher
+    
+    Relational database for storing clients, rooms, and reservations.
+  </Card>
+  
+  <Card title="npm" icon="box">
+    **Version:** 6.x or higher
+    
+    **Recommended:** 8.x or higher
+    
+    Package manager (included with Node.js installation).
+  </Card>
+  
+  <Card title="Web Browser" icon="browser">
+    **Any modern browser:**
+    
+    Chrome, Firefox, Safari, or Edge
+    
+    Required for accessing the frontend interfaces.
+  </Card>
+</CardGroup>
+
+### Hardware Requirements
+
+- **CPU:** Dual-core processor (minimum)
+- **RAM:** 2 GB minimum, 4 GB recommended
+- **Disk Space:** 500 MB for application and dependencies
+- **Network:** Internet connection for npm package installation
+
+<Note>
+  These are minimal requirements. For production deployments, consider more robust specifications based on your expected load.
+</Note>
+
+## Installing Node.js
+
+Node.js is the runtime environment for the backend server.
+
+<Tabs>
+  <Tab title="Windows">
+    ### Download and Install
+    
+    1. Visit [nodejs.org](https://nodejs.org/)
+    2. Download the Windows Installer (.msi) for the LTS version
+    3. Run the installer and follow the setup wizard
+    4. Accept the license agreement
+    5. Choose the installation path (default is recommended)
+    6. Ensure "npm package manager" is selected
+    7. Complete the installation
+    
+    ### Verify Installation
+    
+    Open Command Prompt and run:
+    
+    ```bash
+    node --version
+    npm --version
+    ```
+    
+    Expected output:
+    ```
+    v18.17.0
+    9.6.7
+    ```
+  </Tab>
+  
+  <Tab title="macOS">
+    ### Using Homebrew (Recommended)
+    
+    ```bash
+    # Install Homebrew if you haven't already
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Install Node.js
+    brew install node
+    ```
+    
+    ### Using Official Installer
+    
+    1. Visit [nodejs.org](https://nodejs.org/)
+    2. Download the macOS Installer (.pkg)
+    3. Open the downloaded file
+    4. Follow the installation wizard
+    5. Complete the installation
+    
+    ### Verify Installation
+    
+    ```bash
+    node --version
+    npm --version
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ### Ubuntu/Debian
+    
+    ```bash
+    # Update package index
+    sudo apt update
+    
+    # Install Node.js and npm
+    sudo apt install nodejs npm
+    
+    # For the latest LTS version, use NodeSource
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    ```
+    
+    ### CentOS/RHEL/Fedora
+    
+    ```bash
+    # Using NodeSource
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+    sudo yum install -y nodejs
+    ```
+    
+    ### Verify Installation
+    
+    ```bash
+    node --version
+    npm --version
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  Consider using a Node version manager like [nvm](https://github.com/nvm-sh/nvm) to easily switch between Node.js versions.
+</Tip>
+
+## Installing MySQL
+
+MySQL is the database management system for storing application data.
+
+<Tabs>
+  <Tab title="Windows">
+    ### Download MySQL Installer
+    
+    1. Visit [MySQL Downloads](https://dev.mysql.com/downloads/installer/)
+    2. Download MySQL Installer for Windows
+    3. Choose the "mysql-installer-community" version
+    
+    ### Run the Installer
+    
+    1. Launch the downloaded installer
+    2. Choose "Developer Default" setup type
+    3. Install MySQL Server, MySQL Workbench, and MySQL Shell
+    4. Configure MySQL Server:
+       - Choose "Standalone MySQL Server"
+       - Use default port 3306
+       - Set root password (remember this!)
+       - Create a user account if desired
+    5. Complete the installation
+    
+    ### Verify Installation
+    
+    Open Command Prompt:
+    
+    ```bash
+    mysql --version
+    ```
+    
+    Or launch MySQL Workbench from the Start Menu.
+  </Tab>
+  
+  <Tab title="macOS">
+    ### Using Homebrew (Recommended)
+    
+    ```bash
+    # Install MySQL
+    brew install mysql
+    
+    # Start MySQL service
+    brew services start mysql
+    
+    # Secure the installation
+    mysql_secure_installation
+    ```
+    
+    Follow the prompts to:
+    - Set root password
+    - Remove anonymous users
+    - Disallow root login remotely
+    - Remove test database
+    
+    ### Using Official DMG
+    
+    1. Visit [MySQL Downloads](https://dev.mysql.com/downloads/mysql/)
+    2. Download the macOS DMG Archive
+    3. Open the DMG file
+    4. Install the PKG file
+    5. Follow the installation wizard
+    6. Note the temporary root password provided
+    
+    ### Verify Installation
+    
+    ```bash
+    mysql --version
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ### Ubuntu/Debian
+    
+    ```bash
+    # Update package index
+    sudo apt update
+    
+    # Install MySQL Server
+    sudo apt install mysql-server
+    
+    # Start MySQL service
+    sudo systemctl start mysql
+    
+    # Enable MySQL to start on boot
+    sudo systemctl enable mysql
+    
+    # Secure the installation
+    sudo mysql_secure_installation
+    ```
+    
+    ### CentOS/RHEL/Fedora
+    
+    ```bash
+    # Install MySQL repository
+    sudo yum install mysql-server
+    
+    # Start MySQL service
+    sudo systemctl start mysqld
+    
+    # Enable on boot
+    sudo systemctl enable mysqld
+    
+    # Get temporary password
+    sudo grep 'temporary password' /var/log/mysqld.log
+    
+    # Secure installation
+    sudo mysql_secure_installation
+    ```
+    
+    ### Verify Installation
+    
+    ```bash
+    mysql --version
+    sudo systemctl status mysql
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Remember your MySQL root password! You'll need it for the database configuration step.
+</Warning>
+
+## Installing the Application
+
+Now that you have Node.js and MySQL installed, let's set up the Hotel Reservation System.
+
+<Steps>
+  <Step title="Get the Source Code">
+    Navigate to your project directory or clone the repository:
+    
+    ```bash
+    # If cloning from a repository
+    git clone <your-repository-url>
+    cd reservacionBackEnd
+    
+    # Or navigate to your existing project
+    cd path/to/reservacionBackEnd
+    ```
+    
+    Verify the directory structure:
+    ```bash
+    ls -la
+    ```
+    
+    You should see:
+    ```
+    reservaionFronEnd/  # Backend directory
+    index.html
+    habitaciones.html
+    reservaciones.html
+    Menu.html
+    js/
+    css/
+    img/
+    ```
+  </Step>
+
+  <Step title="Navigate to Backend Directory">
+    Change to the backend directory:
+    
+    ```bash
+    cd reservaionFronEnd
+    ```
+    
+    List the contents:
+    ```bash
+    ls -la
+    ```
+    
+    Expected structure:
+    ```
+    server.js
+    package.json
+    controllers/
+    model/
+    router/
+    node_modules/  # Will be created after npm install
+    ```
+  </Step>
+
+  <Step title="Review Package Configuration">
+    Check the `package.json` file to see what dependencies will be installed:
+    
+    ```json package.json
+    {
+      "name": "reservacionhospedaje",
+      "version": "1.0.0",
+      "main": "index.js",
+      "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+      },
+      "keywords": [],
+      "author": "",
+      "license": "ISC",
+      "description": "",
+      "dependencies": {
+        "body-parser": "^1.20.3",
+        "cors": "^2.8.5",
+        "express": "^4.21.1",
+        "mysql2": "^3.11.4"
+      }
+    }
+    ```
+    
+    <Note>
+      The caret (^) in version numbers means npm will install the latest compatible version.
+    </Note>
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+    
+    ```bash
+    npm install
+    ```
+    
+    This command will:
+    - Read `package.json`
+    - Download all dependencies
+    - Install them in the `node_modules/` directory
+    - Create `package-lock.json` for version locking
+    
+    Expected output:
+    ```
+    added 62 packages, and audited 63 packages in 5s
+    
+    7 packages are looking for funding
+      run `npm fund` for details
+    
+    found 0 vulnerabilities
+    ```
+    
+    <Tip>
+      If you encounter permission errors on Linux/Mac, avoid using `sudo`. Instead, configure npm to use a different directory for global packages.
+    </Tip>
+  </Step>
+
+  <Step title="Verify Installation">
+    Check that all dependencies are installed:
+    
+    ```bash
+    npm list --depth=0
+    ```
+    
+    Expected output:
+    ```
+    [email protected]
+    ├── [email protected]
+    ├── [email protected]
+    ├── [email protected]
+    └── [email protected]
+    ```
+    
+    Verify specific packages:
+    ```bash
+    npm list express
+    npm list mysql2
+    npm list cors
+    npm list body-parser
+    ```
+  </Step>
+</Steps>
+
+## Understanding the Dependencies
+
+Here's what each dependency does in the application:
+
+### Express (^4.21.1)
+
+**Purpose:** Web application framework for Node.js
+
+**Used in:** `server.js:2`
+
+```javascript
+const express = require('express');
+const app = express();
+```
+
+Express provides:
+- Routing capabilities
+- Middleware support
+- HTTP utility methods
+- Request/response handling
+
+### body-parser (^1.20.3)
+
+**Purpose:** Parse incoming request bodies
+
+**Used in:** `server.js:3,19`
+
+```javascript
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
+```
+
+BodyParser enables:
+- JSON payload parsing
+- Automatic content-type detection
+- Request body validation
+
+### cors (^2.8.5)
+
+**Purpose:** Enable Cross-Origin Resource Sharing
+
+**Used in:** `server.js:7,18`
+
+```javascript
+const cors = require("cors");
+app.use(cors());
+```
+
+CORS allows:
+- Frontend to communicate with backend from different origins
+- Preflight request handling
+- Secure cross-domain requests
+
+### mysql2 (^3.11.4)
+
+**Purpose:** MySQL database driver for Node.js
+
+**Used in:** `model/database.js:2`
+
+```javascript
+const mysql = require('mysql2');
+const conexion = mysql.createConnection({...});
+```
+
+mysql2 provides:
+- Database connection management
+- Query execution
+- Prepared statements
+- Connection pooling support
+
+<Note>
+  mysql2 is preferred over the older mysql package due to better performance and Promise support.
+</Note>
+
+## Development Tools (Optional)
+
+Consider installing these tools for a better development experience:
+
+### nodemon
+
+Automatically restart the server when files change:
+
+```bash
+npm install -g nodemon
+```
+
+Usage:
+```bash
+nodemon server.js
+```
+
+### MySQL Workbench
+
+Graphical tool for database management:
+
+- Included with MySQL Installer on Windows
+- Available separately for macOS/Linux
+- Provides visual query builder and schema designer
+
+### Postman or Insomnia
+
+API testing tools:
+
+- Download from [postman.com](https://www.postman.com/) or [insomnia.rest](https://insomnia.rest/)
+- Test API endpoints without a frontend
+- Save and organize API requests
+
+### VS Code Extensions
+
+Recommended extensions for development:
+
+- **ESLint:** JavaScript linting
+- **Prettier:** Code formatting
+- **Live Server:** Launch a local development server for HTML files
+- **MySQL:** Database management within VS Code
+- **REST Client:** Test API endpoints from within VS Code
+
+## Installation Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="npm install fails with EACCES error">
+    This is a permissions issue. Solutions:
+    
+    **Option 1: Configure npm to use a different directory (Recommended)**
+    ```bash
+    mkdir ~/.npm-global
+    npm config set prefix '~/.npm-global'
+    echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+    
+    **Option 2: Fix npm permissions**
+    ```bash
+    sudo chown -R $USER:$USER ~/.npm
+    sudo chown -R $USER:$USER /usr/local/lib/node_modules
+    ```
+    
+    <Warning>
+      Avoid using `sudo npm install` as it can cause permission issues.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="MySQL installation fails or won't start">
+    **Windows:**
+    - Check if MySQL service is running in Services
+    - Verify firewall isn't blocking port 3306
+    - Try repairing the installation
+    
+    **Linux:**
+    ```bash
+    # Check service status
+    sudo systemctl status mysql
+    
+    # Check logs
+    sudo tail -f /var/log/mysql/error.log
+    
+    # Restart service
+    sudo systemctl restart mysql
+    ```
+    
+    **macOS:**
+    ```bash
+    # Using Homebrew
+    brew services restart mysql
+    
+    # Check logs
+    tail -f /usr/local/var/mysql/*.err
+    ```
+  </Accordion>
+
+  <Accordion title="Node.js version conflicts">
+    If you need multiple Node.js versions, use nvm (Node Version Manager):
+    
+    ```bash
+    # Install nvm
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    
+    # Install specific version
+    nvm install 18
+    
+    # Use specific version
+    nvm use 18
+    
+    # Set default version
+    nvm alias default 18
+    ```
+  </Accordion>
+
+  <Accordion title="Package installation is very slow">
+    Try these solutions:
+    
+    1. **Clear npm cache:**
+       ```bash
+       npm cache clean --force
+       ```
+    
+    2. **Use a faster registry:**
+       ```bash
+       npm config set registry https://registry.npmjs.org/
+       ```
+    
+    3. **Increase timeout:**
+       ```bash
+       npm config set fetch-timeout 60000
+       ```
+    
+    4. **Use yarn instead:**
+       ```bash
+       npm install -g yarn
+       yarn install
+       ```
+  </Accordion>
+
+  <Accordion title="Missing package.json error">
+    Ensure you're in the correct directory:
+    
+    ```bash
+    pwd  # Print working directory
+    ls -la package.json  # Check if file exists
+    ```
+    
+    Navigate to the backend directory:
+    ```bash
+    cd reservaionFronEnd
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Verifying the Installation
+
+Run these checks to ensure everything is properly installed:
+
+### 1. Check Node.js and npm
+
+```bash
+node --version
+npm --version
+```
+
+### 2. Check MySQL
+
+```bash
+mysql --version
+```
+
+Or connect to MySQL:
+```bash
+mysql -u root -p
+```
+
+### 3. Check Installed Packages
+
+```bash
+cd reservaionFronEnd
+npm list --depth=0
+```
+
+### 4. Check Directory Structure
+
+```bash
+tree -L 2 -I node_modules
+```
+
+Expected output:
+```
+.
+├── controllers
+│   ├── clientes.controllers.js
+│   ├── habitaciones.controllers.js
+│   └── reservaciones.controllers.js
+├── model
+│   ├── clientes.model.js
+│   ├── database.js
+│   └── habitaciones.model.js
+├── router
+│   ├── clientes.Router.js
+│   ├── habitaciones.Router.js
+│   └── reservaciones.Router.js
+├── package.json
+├── package-lock.json
+└── server.js
+```
+
+## Next Steps
+
+Now that everything is installed, proceed to:
+
+<CardGroup cols={2}>
+  <Card title="Database Setup" icon="database" href="/setup/database">
+    Create and configure the MySQL database
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/setup/configuration">
+    Configure environment variables and server settings
+  </Card>
+</CardGroup>
+
+<Tip>
+  Keep your system and dependencies updated regularly for security and performance improvements:
+  ```bash
+  npm update
+  npm audit fix
+  ```
+</Tip>

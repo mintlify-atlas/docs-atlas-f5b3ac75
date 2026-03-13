@@ -1,0 +1,926 @@
+---
+title: Troubleshooting Guide
+description: Common issues and solutions for the Hotel Reservation System
+icon: wrench
+---
+
+## Overview
+
+This guide covers common issues you may encounter when running the Hotel Reservation System, along with step-by-step solutions to resolve them.
+
+<Note>
+  Most issues fall into four categories: connection problems, CORS errors, database issues, and frontend errors.
+</Note>
+
+## Connection Issues
+
+### Cannot Connect to Server
+
+**Symptom:** Frontend shows "Failed to fetch" or connection refused errors.
+
+<Accordion title="Solution Steps">
+  <Steps>
+    ### Step 1: Check if Server is Running
+
+    ```bash
+    # Navigate to backend directory
+    cd ~/workspace/source/reservacionBackEnd/reservaionFronEnd
+
+    # Start the server
+    node server.js
+    ```
+
+    You should see:
+    ```
+    Servidor iniciado en el puerto 4000
+    Conexion exitosa a la base de datos
+    ```
+
+    ### Step 2: Verify Port Availability
+
+    ```bash
+    # Check if port 4000 is in use
+    lsof -i :4000
+
+    # Or on Windows
+    netstat -ano | findstr :4000
+    ```
+
+    ### Step 3: Test Server Directly
+
+    Open browser and navigate to:
+    ```
+    http://localhost:4000/clientes
+    ```
+
+    Should return JSON array of clients.
+
+    ### Step 4: Check Firewall Settings
+
+    Ensure localhost connections on port 4000 are not blocked.
+
+  </Steps>
+</Accordion>
+
+<Warning>
+  If port 4000 is already in use, you'll need to either kill the existing process or change the port in `server.js`.
+</Warning>
+
+### Wrong API URL
+
+**Symptom:** 404 errors when making API requests.
+
+**Problem:** Frontend is using incorrect API endpoint.
+
+**Solution:**
+
+Verify the URL in each JavaScript file:
+
+```javascript
+// File: js/scripts.js
+const URL = 'http://localhost:4000/clientes'; // Check this line
+
+// File: js/scriptshabitaciones.js
+const URL = 'http://localhost:4000/habitaciones'; // Check this line
+
+// File: js/scriptsreservaciones.js
+const URL_RESERVACIONES = 'http://localhost:4000/reservaciones'; // Check this line
+```
+
+**Common mistakes:**
+- Using HTTPS instead of HTTP
+- Wrong port number
+- Missing or extra slashes
+- Typos in endpoint names
+
+## CORS Errors
+
+### CORS Policy Blocking Requests
+
+**Symptom:** Console shows error:
+```
+Access to fetch at 'http://localhost:4000/clientes' from origin 'http://localhost:3000' 
+has been blocked by CORS policy
+```
+
+<Accordion title="Solution">
+  ### Verify CORS is Enabled
+
+  Check `server.js` includes CORS middleware:
+
+  ```javascript
+  const cors = require("cors");
+  app.use(cors());
+  ```
+
+  ### Install CORS Package
+
+  If CORS is missing:
+
+  ```bash
+  cd ~/workspace/source/reservacionBackEnd/reservaionFronEnd
+  npm install cors
+  ```
+
+  ### Check Middleware Order
+
+  CORS must be enabled before routes:
+
+  ```javascript
+  // CORRECT order
+  const app = express();
+  app.use(cors());              // CORS first
+  app.use(bodyParser.json());   // Body parser second
+  app.use(clientesRouter);      // Routes last
+
+  // INCORRECT order
+  const app = express();
+  app.use(clientesRouter);      // DON'T do this first
+  app.use(cors());              // Too late
+  ```
+
+  ### Restart the Server
+
+  After making changes, always restart:
+
+  ```bash
+  # Stop server (Ctrl+C)
+  # Start again
+  node server.js
+  ```
+</Accordion>
+
+### Preflight Request Failing
+
+**Symptom:** OPTIONS requests failing before actual requests.
+
+**Solution:**
+
+Configure CORS to handle OPTIONS requests:
+
+```javascript
+const cors = require("cors");
+
+const corsOptions = {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true
+};
+
+app.use(cors(corsOptions));
+```
+
+## Database Issues
+
+### Cannot Connect to Database
+
+**Symptom:** Server starts but shows database connection error.
+
+<Accordion title="Solution Steps">
+  <Steps>
+    ### Step 1: Verify MySQL is Running
+
+    ```bash
+    # On Linux/Mac
+    sudo systemctl status mysql
+
+    # Start if not running
+    sudo systemctl start mysql
+
+    # On Windows
+    # Check MySQL service in Services panel
+    ```
+
+    ### Step 2: Check Database Credentials
+
+    Verify `model/database.js` has correct credentials:
+
+    ```javascript
+    const conexion = mysql.createConnection({
+        host: 'localhost',
+        user: 'root',          // Your MySQL username
+        password: '1234',      // Your MySQL password
+        database: 'BDReservacion'  // Database name
+    });
+    ```
+
+    ### Step 3: Verify Database Exists
+
+    ```bash
+    # Login to MySQL
+    mysql -u root -p
+
+    # Check databases
+    SHOW DATABASES;
+
+    # Should see BDReservacion in the list
+    ```
+
+    ### Step 4: Create Database if Missing
+
+    ```sql
+    CREATE DATABASE BDReservacion;
+    USE BDReservacion;
+
+    -- Create tables
+    CREATE TABLE cliente (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(255) NOT NULL,
+      correo VARCHAR(255) NOT NULL,
+      telefono VARCHAR(50) NOT NULL
+    );
+
+    CREATE TABLE habitaciones (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      tipo VARCHAR(100) NOT NULL,
+      precio DECIMAL(10, 2) NOT NULL
+    );
+
+    CREATE TABLE reservaciones (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      folio VARCHAR(100) NOT NULL UNIQUE,
+      nombrecliente VARCHAR(255) NOT NULL
+    );
+    ```
+
+    ### Step 5: Test Connection
+
+    ```bash
+    # From backend directory
+    node -e "require('./model/database')"
+
+    # Should output: "Conexion exitosa a la base de datos"
+    ```
+
+  </Steps>
+</Accordion>
+
+### Wrong Database Credentials
+
+**Symptom:** Error: Access denied for user 'root'@'localhost'
+
+**Solution:**
+
+```javascript
+// Update model/database.js with correct credentials
+const conexion = mysql.createConnection({
+    host: 'localhost',
+    user: 'your_mysql_username',     // Change this
+    password: 'your_mysql_password', // Change this
+    database: 'BDReservacion'
+});
+```
+
+### Table Doesn't Exist
+
+**Symptom:** Error: Table 'BDReservacion.cliente' doesn't exist
+
+**Solution:**
+
+Create missing tables:
+
+```sql
+USE BDReservacion;
+
+-- Check existing tables
+SHOW TABLES;
+
+-- Create missing cliente table
+CREATE TABLE IF NOT EXISTS cliente (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(255) NOT NULL,
+  correo VARCHAR(255) NOT NULL,
+  telefono VARCHAR(50) NOT NULL
+);
+
+-- Create missing habitaciones table
+CREATE TABLE IF NOT EXISTS habitaciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  tipo VARCHAR(100) NOT NULL,
+  precio DECIMAL(10, 2) NOT NULL
+);
+
+-- Create missing reservaciones table
+CREATE TABLE IF NOT EXISTS reservaciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  folio VARCHAR(100) NOT NULL UNIQUE,
+  nombrecliente VARCHAR(255) NOT NULL
+);
+```
+
+## Frontend Errors
+
+### Data Not Displaying
+
+**Symptom:** Page loads but table remains empty.
+
+<Accordion title="Debugging Steps">
+  ### Step 1: Check Browser Console
+
+  Open Developer Tools (F12) and check Console tab for errors.
+
+  ### Step 2: Verify API Response
+
+  Test API directly in browser:
+  ```
+  http://localhost:4000/clientes
+  ```
+
+  Should return JSON array.
+
+  ### Step 3: Check JavaScript Loading
+
+  Verify script tags in HTML:
+
+  ```html
+  <!-- index.html -->
+  <script src="js/scripts.js"></script>
+
+  <!-- habitaciones.html -->
+  <script src="js/scriptshabitaciones.js"></script>
+
+  <!-- reservaciones.html -->
+  <script src="js/scriptsreservaciones.js"></script>
+  ```
+
+  ### Step 4: Verify Element IDs
+
+  Check table body ID matches JavaScript:
+
+  ```html
+  <!-- HTML -->
+  <tbody id="tDataCliente"></tbody>
+  ```
+
+  ```javascript
+  // JavaScript
+  const T_DATA_CLIENTE = document.getElementById("tDataCliente");
+  ```
+
+  ### Step 5: Check Function Execution
+
+  Verify load function is called:
+
+  ```javascript
+  // At end of scripts.js
+  loadDataCliente(); // Make sure this line exists
+  ```
+</Accordion>
+
+### Buttons Not Working
+
+**Symptom:** Clicking buttons does nothing.
+
+**Common Causes:**
+
+<Tabs>
+  <Tab title="JavaScript Not Loaded">
+    **Problem:** Script file not loading or loading too early.
+
+    **Solution:**
+
+    ```html
+    <!-- Put script at end of body -->
+    <body>
+        <!-- Your HTML content -->
+        
+        <!-- Scripts at the end -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="js/scripts.js"></script>
+    </body>
+    ```
+  </Tab>
+
+  <Tab title="Function Not Defined">
+    **Problem:** Function name mismatch.
+
+    **Check:**
+
+    ```html
+    <!-- HTML -->
+    <button onclick="guardarDataCliente()">Guardar</button>
+    ```
+
+    ```javascript
+    // JavaScript - function must match
+    async function guardarDataCliente() {
+        // ...
+    }
+    ```
+  </Tab>
+
+  <Tab title="JavaScript Errors">
+    **Problem:** Earlier error preventing execution.
+
+    **Solution:**
+
+    1. Open Browser Console (F12)
+    2. Look for red error messages
+    3. Fix errors from top to bottom
+    4. Refresh page
+  </Tab>
+</Tabs>
+
+### Modal Not Opening
+
+**Symptom:** Clicking button doesn't open modal dialog.
+
+**Solution:**
+
+Verify Bootstrap is loaded and attributes are correct:
+
+```html
+<!-- Bootstrap CSS in <head> -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap JS before closing </body> -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Button with correct attributes -->
+<button type="button" 
+        class="btn btn-primary" 
+        data-bs-toggle="modal" 
+        data-bs-target="#formData">
+    Nuevo Cliente
+</button>
+
+<!-- Modal with matching ID -->
+<div class="modal fade" id="formData" tabindex="-1">
+    <!-- Modal content -->
+</div>
+```
+
+### Form Data Not Submitting
+
+**Symptom:** Clicking save button doesn't send data.
+
+<Accordion title="Common Issues">
+  ### Missing Form Values
+
+  Check input IDs match JavaScript:
+
+  ```html
+  <input type="text" id="clientName">
+  ```
+
+  ```javascript
+  const nombre = document.getElementById("clientName").value;
+  ```
+
+  ### Empty Values
+
+  Add validation before submitting:
+
+  ```javascript
+  async function guardarDataCliente() {
+      const nombre = document.getElementById("clientName").value;
+      const correo = document.getElementById("clientEmail").value;
+      const telefono = document.getElementById("clientPhone").value;
+
+      // Validate
+      if (!nombre || !correo || !telefono) {
+          alert('Por favor complete todos los campos');
+          return;
+      }
+
+      // Continue with save
+      const dataCliente = { nombre, correo, telefono };
+      // ...
+  }
+  ```
+
+  ### Request Not Sending
+
+  Check Network tab in DevTools to see if request is made.
+
+  If no request appears:
+  - Check for JavaScript errors
+  - Verify function is being called
+  - Check if there's an early return
+</Accordion>
+
+## Common Error Messages
+
+### "Cannot GET /"
+
+**Meaning:** Server has no route handler for root path.
+
+**Solution:** This is normal. Access specific endpoints:
+- http://localhost:4000/clientes
+- http://localhost:4000/habitaciones
+- http://localhost:4000/reservaciones
+
+Or add a root route in `server.js`:
+
+```javascript
+app.get('/', (req, res) => {
+    res.json({ 
+        message: 'Hotel Reservation API',
+        endpoints: ['/clientes', '/habitaciones', '/reservaciones']
+    });
+});
+```
+
+### "Unexpected token < in JSON"
+
+**Meaning:** Response is HTML instead of JSON (usually an error page).
+
+**Solution:**
+
+<Steps>
+  ### Check API URL is Correct
+
+  ```javascript
+  // Should be full URL
+  const URL = 'http://localhost:4000/clientes';
+
+  // NOT relative path
+  const URL = '/clientes'; // Wrong if pages aren't served by same server
+  ```
+
+  ### Check Server is Running
+
+  Test endpoint in browser to see actual response.
+
+  ### Check for Server Errors
+
+  Look at server console for error messages.
+</Steps>
+
+### "Cannot read property 'value' of null"
+
+**Meaning:** Element not found in DOM.
+
+**Solution:**
+
+```javascript
+// Check element exists before accessing
+const element = document.getElementById("clientName");
+
+if (!element) {
+    console.error('Element with id "clientName" not found');
+    return;
+}
+
+const nombre = element.value;
+```
+
+**Common causes:**
+- Wrong element ID
+- Script runs before DOM loads
+- Element is inside a different frame/context
+
+### "ER_DUP_ENTRY"
+
+**Meaning:** Trying to insert duplicate unique value.
+
+**Solution:**
+
+Handle in backend controller:
+
+```javascript
+exports.addDataReservaciones = (req, res) => {
+    const { folio, nombrecliente } = req.body;
+    const SQL = "INSERT INTO `reservaciones` (folio, nombrecliente) VALUES (?, ?)";
+    
+    conexion.query(SQL, [folio, nombrecliente], (err, results) => {
+        if (err) {
+            console.error(err);
+            
+            // Check for duplicate folio
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ 
+                    message: "Este folio ya existe" 
+                });
+            }
+            
+            return res.status(500).json({ 
+                message: "Error al guardar reservación" 
+            });
+        }
+        
+        res.json({ message: "Reservación agregada correctamente" });
+    });
+};
+```
+
+## Performance Issues
+
+### Slow Page Load
+
+**Causes and Solutions:**
+
+<Accordion title="Large Datasets">
+  Implement pagination:
+
+  ```javascript
+  // Backend - add pagination parameters
+  router.get('/clientes', (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+      
+      const SQL = `SELECT * FROM cliente LIMIT ? OFFSET ?`;
+      conexion.query(SQL, [limit, offset], (err, results) => {
+          if (err) throw err;
+          res.json(results);
+      });
+  });
+
+  // Frontend
+  async function loadDataCliente(page = 1) {
+      try {
+          const response = await fetch(`${URL}?page=${page}&limit=10`);
+          const data = await response.json();
+          // Render data
+      } catch (error) {
+          console.error(error);
+      }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Multiple Redundant Requests">
+  Implement debouncing for search:
+
+  ```javascript
+  let searchTimeout;
+
+  function searchWithDebounce(query) {
+      // Clear existing timeout
+      clearTimeout(searchTimeout);
+      
+      // Set new timeout
+      searchTimeout = setTimeout(() => {
+          performSearch(query);
+      }, 300); // Wait 300ms after user stops typing
+  }
+
+  async function performSearch(query) {
+      try {
+          const response = await fetch(`${URL}?search=${query}`);
+          const data = await response.json();
+          // Render results
+      } catch (error) {
+          console.error(error);
+      }
+  }
+  ```
+
+  **Usage:**
+  ```html
+  <input type="text" onkeyup="searchWithDebounce(this.value)" placeholder="Buscar...">
+  ```
+</Accordion>
+
+<Accordion title="No Loading Indicators">
+  Add loading states:
+
+  ```javascript
+  async function loadDataCliente() {
+      // Show loading
+      const tbody = document.getElementById("tDataCliente");
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando...</td></tr>';
+      
+      try {
+          const response = await fetch(URL);
+          const data = await response.json();
+          
+          // Render actual data
+          let html = '';
+          data.forEach(cliente => {
+              html += `<tr>...</tr>`;
+          });
+          tbody.innerHTML = html;
+          
+      } catch (error) {
+          console.error(error);
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar datos</td></tr>';
+      }
+  }
+  ```
+</Accordion>
+
+## Development Tools
+
+### Using Browser DevTools
+
+<Steps>
+  ### Open DevTools
+
+  Press F12 or Right-click > Inspect
+
+  ### Console Tab
+
+  - View JavaScript errors
+  - Test API calls
+  - Log debugging information
+
+  ```javascript
+  console.log('Data:', data);
+  console.error('Error:', error);
+  console.table(clientes);
+  ```
+
+  ### Network Tab
+
+  - Monitor API requests
+  - Check request/response details
+  - View response times
+  - Inspect headers and payloads
+
+  ### Elements Tab
+
+  - Inspect HTML structure
+  - Verify element IDs
+  - Check if elements exist
+  - View applied CSS
+</Steps>
+
+### Testing API with cURL
+
+```bash
+# Test GET
+curl -v http://localhost:4000/clientes
+
+# Test POST
+curl -X POST http://localhost:4000/clientes \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Test","correo":"test@test.com","telefono":"555-0000"}'
+
+# Test PUT
+curl -X PUT http://localhost:4000/clientes/1 \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Updated","correo":"updated@test.com","telefono":"555-1111"}'
+
+# Test DELETE
+curl -X DELETE http://localhost:4000/clientes/1
+```
+
+### Debugging Node.js Backend
+
+Add console.log statements:
+
+```javascript
+exports.addDataCliente = (req, res) => {
+    console.log('Received request body:', req.body);
+    
+    const { nombre, correo, telefono } = req.body;
+    console.log('Parsed data:', { nombre, correo, telefono });
+    
+    const SQL = "INSERT INTO `cliente` (nombre, correo, telefono) VALUES (?, ?, ?)";
+    console.log('Executing SQL:', SQL);
+    
+    conexion.query(SQL, [nombre, correo, telefono], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            throw err;
+        }
+        
+        console.log('Insert successful:', results);
+        res.json({ message: "Cliente agregado" });
+    });
+};
+```
+
+## Environment Checklist
+
+Use this checklist when troubleshooting:
+
+<Steps>
+  ### Backend Requirements
+
+  - [ ] Node.js installed (v14 or higher)
+  - [ ] MySQL installed and running
+  - [ ] Database `BDReservacion` exists
+  - [ ] All tables created (cliente, habitaciones, reservaciones)
+  - [ ] npm packages installed (`npm install`)
+  - [ ] Server running on port 4000
+
+  ### Frontend Requirements
+
+  - [ ] HTML files in correct location
+  - [ ] JavaScript files in `js/` folder
+  - [ ] Bootstrap CSS and JS CDN links present
+  - [ ] Correct API URLs in JavaScript files
+  - [ ] Browser supports modern JavaScript (ES6+)
+
+  ### Network Requirements
+
+  - [ ] Localhost accessible
+  - [ ] Port 4000 not blocked by firewall
+  - [ ] No proxy interfering with requests
+  - [ ] CORS enabled on backend
+
+  ### Database Requirements
+
+  - [ ] MySQL credentials correct
+  - [ ] Database user has necessary privileges
+  - [ ] Tables have correct schema
+  - [ ] No conflicting unique constraints
+</Steps>
+
+## Getting Help
+
+If you're still experiencing issues:
+
+<CardGroup cols={2}>
+  <Card title="Check Server Logs" icon="terminal">
+    Look at the terminal where Node.js is running for error messages
+  </Card>
+  
+  <Card title="Check Browser Console" icon="browser">
+    Press F12 and check Console tab for JavaScript errors
+  </Card>
+  
+  <Card title="Test API Directly" icon="code">
+    Use browser or cURL to test API endpoints independently
+  </Card>
+  
+  <Card title="Verify Database" icon="database">
+    Login to MySQL and verify tables and data exist
+  </Card>
+</CardGroup>
+
+## Quick Reference
+
+### Server Won't Start
+
+```bash
+# Check if port is in use
+lsof -i :4000
+
+# Kill process using port
+kill -9 <PID>
+
+# Or change port in server.js
+const PORT = 5000; // Use different port
+```
+
+### Database Connection Failed
+
+```bash
+# Start MySQL
+sudo systemctl start mysql
+
+# Login to verify
+mysql -u root -p
+
+# Check database exists
+SHOW DATABASES;
+```
+
+### Frontend Not Loading Data
+
+```javascript
+// Add debugging
+async function loadDataCliente() {
+    console.log('Starting load...');
+    
+    try {
+        console.log('Fetching from:', URL);
+        const response = await fetch(URL);
+        console.log('Response:', response);
+        
+        const data = await response.json();
+        console.log('Data:', data);
+        
+        // Continue with rendering...
+    } catch (error) {
+        console.error('Error details:', error);
+    }
+}
+```
+
+### CORS Error
+
+```javascript
+// Add to server.js before routes
+const cors = require('cors');
+app.use(cors());
+
+// Then restart server
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Management" icon="users" href="/guides/clients">
+    Return to client management guide
+  </Card>
+  
+  <Card title="Room Management" icon="bed" href="/guides/rooms">
+    Return to room management guide
+  </Card>
+  
+  <Card title="Reservations" icon="calendar" href="/guides/reservations">
+    Return to reservations guide
+  </Card>
+  
+  <Card title="Frontend Integration" icon="code" href="/guides/frontend-integration">
+    Return to integration guide
+  </Card>
+</CardGroup>

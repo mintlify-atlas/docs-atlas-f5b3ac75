@@ -1,0 +1,916 @@
+---
+title: Reservation Management
+description: Complete guide to creating and managing hotel reservations
+icon: calendar
+---
+
+## Overview
+
+The Reservation Management module is the core functionality of the Hotel Reservation System. It allows staff to create, update, and track guest reservations with a simple folio-based system.
+
+<Note>
+  Reservations consist of a unique folio number and the client's name. The API endpoint is `http://localhost:4000/reservaciones`.
+</Note>
+
+## Reservation Data Structure
+
+Each reservation record contains:
+
+| Field | Type | Description | Example |
+|-------|------|-------------|----------|
+| `id` | Integer | Auto-generated unique identifier | 1 |
+| `folio` | String | Unique reservation folio number | "F-2024-001" |
+| `nombrecliente` | String | Client's full name | "Juan Pérez" |
+
+<Warning>
+  The current implementation stores basic reservation data. In production, you might want to add fields like check-in date, check-out date, room ID, and total amount.
+</Warning>
+
+## Getting Started
+
+<Steps>
+
+### Step 1: Access Reservations Interface
+
+Open `reservaciones.html` to access the reservation management interface.
+
+### Step 2: Understand the UI
+
+The interface provides:
+- A table displaying all active reservations
+- "Nueva Reservación" button to create bookings
+- Update and Delete actions for each reservation
+- Bootstrap modals for data entry and editing
+
+### Step 3: Initialize API Connection
+
+```javascript
+const URL_RESERVACIONES = 'http://localhost:4000/reservaciones';
+const T_DATA_RESERVACIONES = document.getElementById("tDataReservaciones");
+
+let reservaciones = [];
+let reservacionSeleccionada = null;
+```
+
+**Key Variables:**
+- `URL_RESERVACIONES`: API endpoint
+- `T_DATA_RESERVACIONES`: Table body element reference
+- `reservaciones`: Array storing all reservation data
+- `reservacionSeleccionada`: Currently selected reservation for updates
+
+</Steps>
+
+## CRUD Operations
+
+### Reading Reservations
+
+Load all reservations when the page initializes.
+
+#### Loading All Reservations
+
+```javascript
+async function loadReservaciones() {
+    try {
+        const response = await fetch(URL_RESERVACIONES);
+        reservaciones = await response.json();
+
+        let html = '';
+        reservaciones.forEach(reservacion => {
+            html += `
+            <tr>
+                <td>${reservacion.folio}</td>
+                <td>${reservacion.nombrecliente}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateReservacion" onclick="seleccionarReservacion(${reservacion.id})">Actualizar</button>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarReservacion(${reservacion.id})">Eliminar</button>
+                </td>
+            </tr>`;
+        });
+
+        T_DATA_RESERVACIONES.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error al cargar las reservaciones:', error);
+    }
+}
+```
+
+**Key Features:**
+- Stores reservations globally for later reference
+- Generates table rows with folio and client name
+- Includes Bootstrap modal triggers for updates
+- Error logging for debugging
+
+#### Backend Controller
+
+```javascript
+exports.obtenerListReservacionesService = (req, res) => {
+    const SQL = "SELECT * FROM `reservaciones`";
+    conexion.query(SQL, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+};
+```
+
+**Route:** `GET /reservaciones`
+
+**Response Example:**
+```json
+[
+  {
+    "id": 1,
+    "folio": "F-2024-001",
+    "nombrecliente": "Juan Pérez"
+  },
+  {
+    "id": 2,
+    "folio": "F-2024-002",
+    "nombrecliente": "María García"
+  }
+]
+```
+
+### Creating New Reservations
+
+<Tabs>
+  <Tab title="Frontend">
+    Create reservations using the `guardarReservacion()` function:
+
+    ```javascript
+    async function guardarReservacion() {
+        const folio = document.getElementById("folioReservacion").value;
+        const nombrecliente = document.getElementById("clienteReservacion").value;
+
+        const data = { folio, nombrecliente };
+
+        try {
+            const response = await fetch(URL_RESERVACIONES, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error('Error al guardar reservación');
+
+            loadReservaciones();
+            limpiarFormulario('formDataReservacion');
+
+        } catch (error) {
+            console.error('Error al guardar reservación:', error);
+        }
+    }
+    ```
+
+    **Process Flow:**
+    1. Extract folio and client name from form
+    2. Create data object with reservation details
+    3. Send POST request with JSON payload
+    4. Reload reservations on success
+    5. Clear form and close modal
+  </Tab>
+
+  <Tab title="Backend">
+    The backend controller handles reservation creation:
+
+    ```javascript
+    exports.addDataReservaciones = (req, res) => {
+        const { folio, nombrecliente } = req.body;
+        const SQL = "INSERT INTO `reservaciones` (folio, nombrecliente) VALUES (?, ?)";
+        conexion.query(SQL, [folio, nombrecliente], (err, results) => {
+            if (err) {
+                console.error(err);
+                res.status(500).json({ message: "Error al guardar reservación" });
+            } else {
+                res.json({ message: "Reservación agregada correctamente" });
+            }
+        });
+    };
+    ```
+
+    **Route:** `POST /reservaciones`
+
+    **Request Body:**
+    ```json
+    {
+      "folio": "F-2024-003",
+      "nombrecliente": "Carlos Rodríguez"
+    }
+    ```
+
+    **Success Response:**
+    ```json
+    {
+      "message": "Reservación agregada correctamente"
+    }
+    ```
+
+    **Error Response:**
+    ```json
+    {
+      "message": "Error al guardar reservación"
+    }
+    ```
+  </Tab>
+
+  <Tab title="HTML Form">
+    The reservation creation form from `reservaciones.html`:
+
+    ```html
+    <div class="modal fade" id="formDataReservacion" tabindex="-1" aria-labelledby="formDataLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="formDataLabel">Nueva Reservación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="folioReservacion" class="form-label">Folio</label>
+                            <input type="text" class="form-control" id="folioReservacion"
+                                placeholder="Folio de la reservación">
+                        </div>
+                        <div class="mb-3">
+                            <label for="clienteReservacion" class="form-label">Cliente</label>
+                            <input type="text" class="form-control" id="clienteReservacion"
+                                placeholder="Nombre del cliente">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarReservacion()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+### Updating Reservations
+
+Reservation updates use a two-step process: selection and submission.
+
+#### Step 1: Select Reservation
+
+```javascript
+function seleccionarReservacion(id) {
+    reservacionSeleccionada = reservaciones.find(res => res.id === id);
+    document.getElementById("folioReservacionU").value = reservacionSeleccionada.folio;
+    document.getElementById("clienteReservacionU").value = reservacionSeleccionada.nombrecliente;
+}
+```
+
+**Key Points:**
+- Uses `find()` to locate reservation by ID
+- Stores selected reservation in global variable
+- Pre-fills update form with current values
+- Triggered when user clicks "Actualizar" button
+
+<Note>
+  The Bootstrap modal trigger is built into the button's `data-bs-toggle` and `data-bs-target` attributes, so the modal opens automatically after selection.
+</Note>
+
+#### Step 2: Submit Update
+
+```javascript
+async function actualizarReservacion() {
+    const folio = document.getElementById("folioReservacionU").value;
+    const nombrecliente = document.getElementById("clienteReservacionU").value;
+
+    const data = { folio, nombrecliente };
+
+    try {
+        const response = await fetch(`${URL_RESERVACIONES}/${reservacionSeleccionada.id}`, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Error al actualizar reservación');
+
+        loadReservaciones();
+        limpiarFormulario('updateReservacion');
+
+    } catch (error) {
+        console.error('Error al actualizar reservación:', error);
+    }
+}
+```
+
+**Update Process:**
+1. Extract updated values from form
+2. Get reservation ID from `reservacionSeleccionada`
+3. Send PUT request to `/reservaciones/:id`
+4. Reload reservations list
+5. Clear form and close modal
+
+#### Backend Update Handler
+
+```javascript
+exports.updateDataReservaciones = (req, res) => {
+    const id = req.params.id;
+    const { folio, nombrecliente } = req.body;
+    const SQL = "UPDATE `reservaciones` SET folio=?, nombrecliente=? WHERE id=?";
+    conexion.query(SQL, [folio, nombrecliente, id], (err, results) => {
+        if (err) throw err;
+        if (results.affectedRows === 0) {
+            res.status(404).json({ message: "Reservación no encontrada" });
+        } else {
+            res.json({ message: "Reservación actualizada correctamente" });
+        }
+    });
+};
+```
+
+**Route:** `PUT /reservaciones/:id`
+
+**Features:**
+- Checks if any rows were affected
+- Returns 404 if reservation doesn't exist
+- Returns success message on update
+
+### Deleting Reservations
+
+Delete reservations permanently from the system.
+
+```javascript
+async function eliminarReservacion(id) {
+    try {
+        const response = await fetch(`${URL_RESERVACIONES}/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error('Error al eliminar reservación');
+
+        loadReservaciones();
+
+    } catch (error) {
+        console.error('Error al eliminar reservación:', error);
+    }
+}
+```
+
+<Warning>
+  Deletion is permanent. Consider implementing soft deletes or requiring confirmation dialogs for better data safety.
+</Warning>
+
+#### Backend Delete Handler
+
+```javascript
+exports.deleteDataReservaciones = (req, res) => {
+    const id = req.params.id;
+    const SQL = "DELETE FROM `reservaciones` WHERE id=?";
+    conexion.query(SQL, id, (err, results) => {
+        if (err) throw err;
+        if (results.affectedRows === 0) {
+            res.status(404).json({ message: "Reservación no encontrada" });
+        } else {
+            res.json({ message: "Reservación eliminada correctamente" });
+        }
+    });
+};
+```
+
+**Route:** `DELETE /reservaciones/:id`
+
+## Utility Functions
+
+### Clearing Forms
+
+The `limpiarFormulario()` function clears input fields and closes modals:
+
+```javascript
+function limpiarFormulario(modalId) {
+    document.getElementById(modalId).querySelectorAll("input").forEach(input => input.value = '');
+    const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+    modal.hide();
+}
+```
+
+**Usage:**
+- `limpiarFormulario('formDataReservacion')` - Clear new reservation form
+- `limpiarFormulario('updateReservacion')` - Clear update form
+
+**Process:**
+1. Select all input elements within the modal
+2. Clear each input's value
+3. Get the Bootstrap Modal instance
+4. Hide the modal programmatically
+
+## API Reference
+
+### Complete Endpoint Documentation
+
+<CardGroup cols={2}>
+  <Card title="GET /reservaciones" icon="list">
+    Retrieve all reservations
+    
+    **Response:**
+    ```json
+    [
+      {
+        "id": 1,
+        "folio": "F-2024-001",
+        "nombrecliente": "Juan Pérez"
+      }
+    ]
+    ```
+  </Card>
+
+  <Card title="POST /reservaciones" icon="plus">
+    Create a new reservation
+    
+    **Request Body:**
+    ```json
+    {
+      "folio": "F-2024-005",
+      "nombrecliente": "Ana Martínez"
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "message": "Reservación agregada correctamente"
+    }
+    ```
+  </Card>
+
+  <Card title="PUT /reservaciones/:id" icon="pen">
+    Update an existing reservation
+    
+    **URL Parameter:** `id` (integer)
+    
+    **Request Body:**
+    ```json
+    {
+      "folio": "F-2024-001-UPDATED",
+      "nombrecliente": "Juan Pérez Silva"
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "message": "Reservación actualizada correctamente"
+    }
+    ```
+  </Card>
+
+  <Card title="DELETE /reservaciones/:id" icon="trash">
+    Delete a reservation
+    
+    **URL Parameter:** `id` (integer)
+    
+    **Success Response:**
+    ```json
+    {
+      "message": "Reservación eliminada correctamente"
+    }
+    ```
+    
+    **Error Response (404):**
+    ```json
+    {
+      "message": "Reservación no encontrada"
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Accordion title="Folio Generation">
+  Implement automatic folio generation to ensure uniqueness:
+  
+  ```javascript
+  function generateFolio() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      
+      return `F-${year}${month}${day}-${random}`;
+  }
+  
+  // Usage in form
+  async function guardarReservacionWithAutoFolio() {
+      const folio = generateFolio();
+      const nombrecliente = document.getElementById("clienteReservacion").value;
+
+      const data = { folio, nombrecliente };
+
+      try {
+          const response = await fetch(URL_RESERVACIONES, {
+              method: "POST",
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+          });
+
+          if (!response.ok) throw new Error('Error al guardar reservación');
+
+          loadReservaciones();
+          limpiarFormulario('formDataReservacion');
+
+      } catch (error) {
+          console.error('Error al guardar reservación:', error);
+      }
+  }
+  ```
+  
+  **Folio Format:** `F-YYYYMMDD-XXXX`
+  - F: Prefix for "Folio"
+  - YYYYMMDD: Current date
+  - XXXX: Random 4-digit number
+</Accordion>
+
+<Accordion title="Client Selection from Database">
+  Instead of typing client names, load them from the clients table:
+  
+  ```javascript
+  async function loadClientesForSelect() {
+      try {
+          const response = await fetch('http://localhost:4000/clientes');
+          const clientes = await response.json();
+          
+          const select = document.getElementById('clienteReservacionSelect');
+          select.innerHTML = '<option value="">Seleccione un cliente</option>';
+          
+          clientes.forEach(cliente => {
+              const option = document.createElement('option');
+              option.value = cliente.nombre;
+              option.textContent = `${cliente.nombre} (${cliente.correo})`;
+              select.appendChild(option);
+          });
+      } catch (error) {
+          console.error('Error cargando clientes:', error);
+      }
+  }
+  ```
+  
+  **HTML Dropdown:**
+  ```html
+  <div class="mb-3">
+      <label for="clienteReservacionSelect" class="form-label">Cliente</label>
+      <select class="form-control" id="clienteReservacionSelect">
+          <option value="">Seleccione un cliente</option>
+      </select>
+  </div>
+  ```
+</Accordion>
+
+<Accordion title="Delete Confirmation">
+  Always confirm before deleting reservations:
+  
+  ```javascript
+  async function eliminarReservacionWithConfirmation(id) {
+      const reservacion = reservaciones.find(r => r.id === id);
+      
+      if (!confirm(`¿Está seguro de eliminar la reservación ${reservacion.folio} del cliente ${reservacion.nombrecliente}?`)) {
+          return;
+      }
+      
+      try {
+          const response = await fetch(`${URL_RESERVACIONES}/${id}`, { method: "DELETE" });
+          
+          if (!response.ok) throw new Error('Error al eliminar reservación');
+
+          alert('Reservación eliminada exitosamente');
+          loadReservaciones();
+
+      } catch (error) {
+          console.error('Error al eliminar reservación:', error);
+          alert('Error al eliminar la reservación');
+      }
+  }
+  ```
+</Accordion>
+
+<Accordion title="Input Validation">
+  Validate reservation data before submission:
+  
+  ```javascript
+  function validateReservacion(folio, nombrecliente) {
+      if (!folio || folio.trim() === '') {
+          alert('El folio es requerido');
+          return false;
+      }
+      
+      if (!nombrecliente || nombrecliente.trim() === '') {
+          alert('El nombre del cliente es requerido');
+          return false;
+      }
+      
+      // Check if folio already exists
+      const exists = reservaciones.some(r => r.folio === folio);
+      if (exists) {
+          alert('Este folio ya existe. Por favor use un folio único.');
+          return false;
+      }
+      
+      return true;
+  }
+  
+  async function guardarReservacionWithValidation() {
+      const folio = document.getElementById("folioReservacion").value;
+      const nombrecliente = document.getElementById("clienteReservacion").value;
+      
+      if (!validateReservacion(folio, nombrecliente)) {
+          return;
+      }
+
+      const data = { folio, nombrecliente };
+
+      try {
+          const response = await fetch(URL_RESERVACIONES, {
+              method: "POST",
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+          });
+
+          if (!response.ok) throw new Error('Error al guardar reservación');
+
+          alert('Reservación creada exitosamente');
+          loadReservaciones();
+          limpiarFormulario('formDataReservacion');
+
+      } catch (error) {
+          console.error('Error al guardar reservación:', error);
+          alert('Error al guardar la reservación');
+      }
+  }
+  ```
+</Accordion>
+
+## Advanced Features
+
+### Search Functionality
+
+Implement search to find reservations quickly:
+
+```javascript
+function searchReservaciones(query) {
+    const lowerQuery = query.toLowerCase();
+    
+    const results = reservaciones.filter(reservacion => 
+        reservacion.folio.toLowerCase().includes(lowerQuery) ||
+        reservacion.nombrecliente.toLowerCase().includes(lowerQuery)
+    );
+    
+    let html = '';
+    results.forEach(reservacion => {
+        html += `
+        <tr>
+            <td>${reservacion.folio}</td>
+            <td>${reservacion.nombrecliente}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateReservacion" onclick="seleccionarReservacion(${reservacion.id})">Actualizar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarReservacion(${reservacion.id})">Eliminar</button>
+            </td>
+        </tr>`;
+    });
+    
+    T_DATA_RESERVACIONES.innerHTML = html || '<tr><td colspan="3" class="text-center">No se encontraron resultados</td></tr>';
+}
+```
+
+**HTML Search Box:**
+```html
+<input type="text" class="form-control mb-3" placeholder="Buscar por folio o cliente" onkeyup="searchReservaciones(this.value)">
+```
+
+### Sorting Reservations
+
+```javascript
+function sortReservaciones(field, order = 'asc') {
+    const sortedData = [...reservaciones].sort((a, b) => {
+        if (order === 'asc') {
+            return a[field].localeCompare(b[field]);
+        } else {
+            return b[field].localeCompare(a[field]);
+        }
+    });
+    
+    renderReservacionTable(sortedData);
+}
+
+function renderReservacionTable(data) {
+    let html = '';
+    data.forEach(reservacion => {
+        html += `
+        <tr>
+            <td>${reservacion.folio}</td>
+            <td>${reservacion.nombrecliente}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateReservacion" onclick="seleccionarReservacion(${reservacion.id})">Actualizar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarReservacion(${reservacion.id})">Eliminar</button>
+            </td>
+        </tr>`;
+    });
+    
+    T_DATA_RESERVACIONES.innerHTML = html;
+}
+```
+
+### Export Reservations
+
+Export reservations to CSV format:
+
+```javascript
+function exportToCSV() {
+    let csv = 'Folio,Cliente\n';
+    
+    reservaciones.forEach(reservacion => {
+        csv += `"${reservacion.folio}","${reservacion.nombrecliente}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reservaciones_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+```
+
+## Database Schema
+
+The `reservaciones` table structure:
+
+```sql
+CREATE TABLE `reservaciones` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `folio` VARCHAR(100) NOT NULL UNIQUE,
+  `nombrecliente` VARCHAR(255) NOT NULL
+);
+```
+
+<Note>
+  Consider adding an index on the `folio` column for faster lookups and ensuring uniqueness with a UNIQUE constraint.
+</Note>
+
+## Enhanced Schema (Recommended)
+
+For production systems, consider this enhanced schema:
+
+```sql
+CREATE TABLE `reservaciones` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `folio` VARCHAR(100) NOT NULL UNIQUE,
+  `cliente_id` INT NOT NULL,
+  `habitacion_id` INT NOT NULL,
+  `fecha_entrada` DATE NOT NULL,
+  `fecha_salida` DATE NOT NULL,
+  `total` DECIMAL(10, 2) NOT NULL,
+  `estado` ENUM('pendiente', 'confirmada', 'cancelada', 'completada') DEFAULT 'pendiente',
+  `fecha_creacion` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`cliente_id`) REFERENCES `cliente`(`id`),
+  FOREIGN KEY (`habitacion_id`) REFERENCES `habitaciones`(`id`)
+);
+```
+
+## Complete Workflow Example
+
+<Steps>
+
+### Step 1: Page Initialization
+
+```javascript
+loadReservaciones();
+```
+
+### Step 2: Create New Reservation
+
+User clicks "Nueva Reservación" and enters:
+- Folio: "F-2024-100"
+- Cliente: "Pedro González"
+
+### Step 3: Save Reservation
+
+```javascript
+guardarReservacion();
+// POST http://localhost:4000/reservaciones
+```
+
+### Step 4: Backend Processing
+
+```javascript
+// INSERT INTO reservaciones (folio, nombrecliente) VALUES ('F-2024-100', 'Pedro González')
+```
+
+### Step 5: Display Updated List
+
+```javascript
+loadReservaciones();
+// Fetches and displays all reservations including the new one
+```
+
+### Step 6: Update Reservation
+
+User clicks "Actualizar", modifies client name to "Pedro González Sánchez"
+
+### Step 7: Submit Update
+
+```javascript
+actualizarReservacion();
+// PUT http://localhost:4000/reservaciones/3
+```
+
+</Steps>
+
+## Integration Points
+
+### Linking with Clients
+
+Instead of storing client names as strings, link to the `cliente` table:
+
+```javascript
+// Modify to use cliente_id instead
+const data = {
+    folio: document.getElementById("folioReservacion").value,
+    cliente_id: document.getElementById("clienteSelect").value,
+    habitacion_id: document.getElementById("habitacionSelect").value
+};
+```
+
+### Linking with Rooms
+
+Reservations should reference specific rooms:
+
+```javascript
+async function loadHabitacionesDisponibles() {
+    try {
+        const response = await fetch('http://localhost:4000/habitaciones');
+        const habitaciones = await response.json();
+        
+        const select = document.getElementById('habitacionSelect');
+        select.innerHTML = '<option value="">Seleccione una habitación</option>';
+        
+        habitaciones.forEach(habitacion => {
+            const option = document.createElement('option');
+            option.value = habitacion.id;
+            option.textContent = `${habitacion.nombre} - ${habitacion.tipo} - $${habitacion.precio}`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error cargando habitaciones:', error);
+    }
+}
+```
+
+## Error Handling
+
+Implement comprehensive error handling:
+
+```javascript
+async function guardarReservacionWithErrorHandling() {
+    const folio = document.getElementById("folioReservacion").value;
+    const nombrecliente = document.getElementById("clienteReservacion").value;
+
+    const data = { folio, nombrecliente };
+
+    try {
+        const response = await fetch(URL_RESERVACIONES, {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Error al guardar reservación');
+        }
+        
+        alert(result.message || 'Reservación creada exitosamente');
+        loadReservaciones();
+        limpiarFormulario('formDataReservacion');
+
+    } catch (error) {
+        console.error('Error al guardar reservación:', error);
+        alert(`Error: ${error.message}`);
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Management" icon="users" href="/guides/clients">
+    Learn how to manage clients
+  </Card>
+  
+  <Card title="Room Management" icon="bed" href="/guides/rooms">
+    Manage hotel room inventory
+  </Card>
+  
+  <Card title="Frontend Integration" icon="code" href="/guides/frontend-integration">
+    Understand API integration patterns
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/guides/troubleshooting">
+    Common reservation issues and fixes
+  </Card>
+</CardGroup>
