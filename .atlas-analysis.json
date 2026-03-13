@@ -1,0 +1,95 @@
+{
+  "projectType": "saas",
+  "projectName": "Hotel Reservation System",
+  "projectDescription": "A full-stack hotel management system for managing clients, rooms, and reservations with a RESTful API and web interface.",
+  "theme": "almond",
+  "primaryColor": "#2563eb",
+  "lightColor": "#60a5fa",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "setup/installation",
+              "setup/database",
+              "setup/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "User Guide",
+        "groups": [
+          {
+            "group": "Core Features",
+            "pages": [
+              "guides/clients",
+              "guides/rooms",
+              "guides/reservations"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "guides/frontend-integration",
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/clients",
+              "api/rooms",
+              "api/reservations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Complete CRUD operations for client management",
+    "Room inventory and availability tracking",
+    "Reservation booking and management system",
+    "RESTful API with Express.js backend",
+    "MySQL database integration",
+    "Bootstrap-based web interface"
+  ],
+  "publicApiSurface": [
+    "GET /clientes - Get all clients",
+    "POST /clientes - Create a new client",
+    "PUT /clientes/:id - Update a client",
+    "DELETE /clientes/:id - Delete a client",
+    "GET /habitaciones - Get all rooms",
+    "POST /habitaciones - Create a new room",
+    "PUT /habitaciones/:id - Update a room",
+    "DELETE /habitaciones/:id - Delete a room",
+    "GET /reservaciones - Get all reservations",
+    "POST /reservaciones - Create a new reservation",
+    "PUT /reservaciones/:id - Update a reservation",
+    "DELETE /reservaciones/:id - Delete a reservation"
+  ]
+}
